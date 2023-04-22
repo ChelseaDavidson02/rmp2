@@ -3,6 +3,7 @@ helper functions for pybullet
 """
 
 import pybullet as p
+import math
 
 def add_goal(bullet_client, position, radius=0.05, color=[0.0, 1.0, 0.0, 1]):
     collision = -1
@@ -44,3 +45,17 @@ def add_obstacle_cylinder(bullet_client, center, radius=0.1, length=0.1, color=[
                                     baseVisualShapeIndex=visual,
                                     basePosition=center)
     return obstacle
+
+
+def add_big_cylinder():
+    baseOrientationCylinder = p.getQuaternionFromEuler([math.pi/2, 0, math.pi/2])
+    cylinderMainUid = p.loadURDF("rmp2/utils/blocks/cylinder_main.urdf", \
+            basePosition=[5.,-1.75,1], baseOrientation=baseOrientationCylinder, globalScaling=1)
+    return cylinderMainUid
+
+def add_cuboid():
+    # Cuboid_Uid = p.loadURDF("rmp2/utils/blocks/cuboid_main.urdf", basePosition=[0.5,-0.8,1.25], \
+    #                        globalScaling=10)
+    Cuboid_Uid = p.loadURDF("rmp2/utils/blocks/cuboid_main.urdf", basePosition=[0.2,-0.5,0.25], \
+                            globalScaling=10)
+    return Cuboid_Uid

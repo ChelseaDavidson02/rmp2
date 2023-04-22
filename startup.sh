@@ -1,2 +1,2 @@
-conda activate rmp2rl
+conda activate rmp2SF
 export PYTHONPATH=$PYTHONPATH:$PWD

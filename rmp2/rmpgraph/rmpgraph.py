@@ -70,7 +70,7 @@ class RMPGraph(tf.Module, ABC):
     @tf.function
     def solve_rmp2(self, q, qd, mode='value', **features):
         tf.compat.v1.enable_v2_behavior()
-        print('------------buiding graph--------------')
+        print('------------building graph--------------')
 
         with timing('<rmp2> forward pass', self.timed):
             # compute the generalized coordinates, velocities, and curvatures
