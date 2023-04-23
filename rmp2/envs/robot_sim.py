@@ -122,15 +122,15 @@ class RobotSim(object):
         for OPEN_LOOP: both joint angles and velocities
             are given by numerical integration
         """
-        full_joint_states = self.bullet_client.getJointStates(
-            self.robot_uid, self._joint_indices)
         if self._mode == OPEN_LOOP:
             self.joint_poses = self.target_joint_poses
             self.joint_vels = self.target_joint_vels
         elif self._mode == VEL_OPEN_LOOP:
+            full_joint_states = self.bullet_client.getJointStates(self.robot_uid, self._joint_indices)
             self.joint_poses = np.array([joint_state[JOINT_POSE_IDX] for joint_state in full_joint_states])
             self.joint_vels = self.target_joint_vels
         elif self._mode == CLOSED_LOOP:
+            full_joint_states = self.bullet_client.getJointStates(self.robot_uid, self._joint_indices)
             self.joint_poses = np.array([joint_state[JOINT_POSE_IDX] for joint_state in full_joint_states])
             self.joint_vels = np.array([joint_state[JOINT_VEL_IDX] for joint_state in full_joint_states])
         self.joint_torques = np.array([joint_state[JOINT_TORQUE_IDX] for joint_state in full_joint_states])

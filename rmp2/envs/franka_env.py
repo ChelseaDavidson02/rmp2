@@ -75,19 +75,19 @@ class FrankaEnv(RobotEnv):
         return current_goal, goal_uid
         
     def _generate_random_obstacles(self):
-        current_obs = []
-        obs_uids = []
+        current_obstacles = []
+        obstacle_uids = []
 
         # if obstacle config list is given, sample one config from the list
         if self.obstacle_cofigs is not None:
             config = self.obstacle_cofigs[self.np_random.randint(len(self.obstacle_cofigs))]
             for (i, obstacle) in enumerate(config):
-                obs_uids.append(
+                obstacle_uids.append(
                     add_obstacle_ball(self._p, obstacle['center'], obstacle['radius'])
                 )
-                current_obs.append(np.append(obstacle['center'], obstacle['radius']))
+                current_obstacles.append(np.append(obstacle['center'], obstacle['radius']))
             for i in range(len(config), self.max_obstacle_num):
-                current_obs.append(np.append(np.zeros(self.workspace_dim), -1.))
+                current_obstacles.append(np.append(np.zeros(self.workspace_dim), -1.))
         # otherwise, sample random obstacles with the specified parameters
         else:
             num_obstacles = self.np_random.randint(self.min_obstacle_num, self.max_obstacle_num + 1)
@@ -101,12 +101,12 @@ class FrankaEnv(RobotEnv):
                         self._obs_torus_major_radius,
                         self._obs_torus_minor_radius,
                         self._obs_torus_height)
-                    obs_uids.append(
+                    obstacle_uids.append(
                         add_obstacle_ball(self._p, center, radius)
                     )
-                    current_obs.append(np.append(center, radius))
+                    current_obstacles.append(np.append(center, radius))
                 else:
-                    current_obs.append(np.append(np.zeros(self.workspace_dim), -1.))
+                    current_obstacles.append(np.append(np.zeros(self.workspace_dim), -1.))
         # generate obstacle objects within pybullet
-        current_obs = np.array(current_obs).flatten()
-        return current_obs, obs_uids
+        current_obstacles = np.array(current_obstacles).flatten()
+        return current_obstacles, obstacle_uids

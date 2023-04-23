@@ -75,19 +75,19 @@ class FrankaEnvSF(RobotEnv):
         return current_goal, goal_uid
 
     def _generate_random_obstacles(self):
-        current_obs = []
-        obs_uids = []
+        current_obstacles = []
+        obstacle_uids = []
 
         # if obstacle config list is given, sample one config from the list
         if self.obstacle_cofigs is not None:
             config = self.obstacle_cofigs[self.np_random.integers(1,len(self.obstacle_cofigs))]
             for (i, obstacle) in enumerate(config):
-                obs_uids.append(
+                obstacle_uids.append(
                     add_obstacle_ball(self._p, obstacle['center'], obstacle['radius'])
                 )
-                current_obs.append(np.append(obstacle['center'], obstacle['radius']))
+                current_obstacles.append(np.append(obstacle['center'], obstacle['radius']))
             for i in range(len(config), self.max_obstacle_num):
-                current_obs.append(np.append(np.zeros(self.workspace_dim), -1.))
+                current_obstacles.append(np.append(np.zeros(self.workspace_dim), -1.))
         # otherwise, sample random obstacles with the specified parameters
         else:
             num_obstacles = self.np_random.integers(self.min_obstacle_num, self.max_obstacle_num + 1)
@@ -101,30 +101,30 @@ class FrankaEnvSF(RobotEnv):
                         self._obs_torus_major_radius,
                         self._obs_torus_minor_radius,
                         self._obs_torus_height)
-                    obs_uids.append(
+                    obstacle_uids.append(
                         add_obstacle_ball(self._p, center, radius)
                     )
-                    current_obs.append(np.append(center, radius))
+                    current_obstacles.append(np.append(center, radius))
                 else:
-                    current_obs.append(np.append(np.zeros(self.workspace_dim), -1.))
+                    current_obstacles.append(np.append(np.zeros(self.workspace_dim), -1.))
         # generate obstacle objects within pybullet
-        current_obs = np.array(current_obs).flatten()
-        return current_obs, obs_uids
+        current_obstacles = np.array(current_obstacles).flatten()
+        return current_obstacles, obstacle_uids
 
     # def _generate_random_obstacles(self):
-    #     current_obs = []
-    #     obs_uids = []
+    #     current_obstacles = []
+    #     obstacle_uids = []
 
     #     # Adding big tunnel
-    #     obs_uids.append(add_big_cylinder())
+    #     obstacle_uids.append(add_big_cylinder())
     #     # TODO - this centre and radius value seen as centre, radius below, is hard coded
-    #     current_obs.append(np.append([5.,-1.75,1], 1))
+    #     current_obstacles.append(np.append([5.,-1.75,1], 1))
 
     #     # Adding cube
-    #     obs_uids.append(add_cuboid())
+    #     obstacle_uids.append(add_cuboid())
     #     # TODO - this centre and radius value seen as centre, radius below, is hard coded
-    #     # current_obs.append(np.append([0.5,-0.8,1.25], 0.03))
-    #     current_obs.append(np.append([0.2,-0.5,0.25], 0.03))
+    #     # current_obstacles.append(np.append([0.5,-0.8,1.25], 0.03))
+    #     current_obstacles.append(np.append([0.2,-0.5,0.25], 0.03))
 
-    #     current_obs = np.array(current_obs).flatten()
-    #     return current_obs, obs_uids
+    #     current_obstacles = np.array(current_obstacles).flatten()
+    #     return current_obstacles, obstacle_uids

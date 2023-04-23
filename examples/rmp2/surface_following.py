@@ -8,7 +8,7 @@ from rmp2.envs import FrankaEnvSF
 from rmp2.utils.env_wrappers import FrankaFullRMPWrapper
 import tensorflow as tf
 
-n_trials = 10
+n_trials = 1
 seed = 15
 dtype = "float32"
 

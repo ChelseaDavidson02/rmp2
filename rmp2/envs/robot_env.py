@@ -13,6 +13,7 @@ import numpy as np
 import time
 from pkg_resources import parse_version
 from abc import abstractmethod
+from sys import float_info
 
 # visualization configs
 largeValObservation = 100
@@ -21,6 +22,7 @@ RENDER_WIDTH = 960
 
 # pybullet macros
 BULLET_LINK_POSE_INDEX = 4
+# Find these magic numbers at https://dirkmittler.homeip.net/blend4web_ce/uranium/bullet/docs/pybullet_quickstartguide.pdf GetClosestPoints
 BULLET_CLOSEST_POINT_CONTACT_FLAG_INDEX = 0
 BULLET_CLOSEST_POINT_CONTACT_NORMAL_INDEX = 7
 BULLET_CLOSEST_POINT_DISTANCE_INDEX = 8
@@ -148,8 +150,8 @@ class RobotEnv(gym.Env):
             self.min_obstacle_radius = config["min_obstacle_radius"]
         else:
             self.max_obstacle_num = max(len(c) for c in self.obstacle_cofigs)
-        self.current_obs = []
-        self.obs_uids = []
+        self.current_obstacles = []
+        self.obstacle_uids = []
 
         # set up rewards
         self._goal_reward_weight = config["goal_reward_weight"]
@@ -197,7 +199,7 @@ class RobotEnv(gym.Env):
         self._p.setGravity(0, 0, self._gravity)
 
         self.goal_uid = None
-        self.obs_uids = []
+        self.obstacle_uids = []
 
         # create robot
         self._robot = robot_sim.create_robot_sim(self.robot_name, self._p, self._time_step, mode=self._acc_control_mode)
@@ -207,7 +209,7 @@ class RobotEnv(gym.Env):
             self._clear_goal_and_obstacles()
             self._generate_random_initial_config()
             self.current_goal, self.goal_uid = self._generate_random_goal()
-            self.current_obs, self.obs_uids = self._generate_random_obstacles()
+            self.current_obstacles, self.obstacle_uids = self._generate_random_obstacles()
             self._p.stepSimulation()
 
             # check if the initial configuration is valid
@@ -247,22 +249,24 @@ class RobotEnv(gym.Env):
         """
         joint_poses, joint_vels, _ = self._robot.get_observation()
 
+        # Move the obstacles here
+
         # vector eef to goal
         eef_position = np.array(self._p.getLinkState(self._robot.robot_uid, self._robot.eef_uid)[BULLET_LINK_POSE_INDEX])
         delta_x = self.current_goal[:self.workspace_dim] - eef_position[:self.workspace_dim]
 
         # vector to closest point on obstacles
         vector_obstacles = []
-        for obs_uid in self.obs_uids:
-            closest_points = self._p.getClosestPoints(self._robot.robot_uid, obs_uid, 1000)
-            distance_to_obs = 1000.
-            vector_obs = np.array([0., 0., 0.])
+        for obstacle_uid in self.obstacle_uids:
+            closest_points = self._p.getClosestPoints(self._robot.robot_uid, obstacle_uid, float_info.max) # Get the closest point (and normal vector) between the robot and the specified obstacle
+            distance_to_obstacle = float_info.max
+            vector_to_obstacle = np.array([0., 0., 0.])
             for point in closest_points:
-                if point[BULLET_CLOSEST_POINT_DISTANCE_INDEX] <= distance_to_obs:
-                    distance_to_obs = point[BULLET_CLOSEST_POINT_DISTANCE_INDEX]
-                    vector_obs = distance_to_obs * np.array(point[BULLET_CLOSEST_POINT_CONTACT_NORMAL_INDEX])
-            vector_obstacles.append(vector_obs[:self.workspace_dim])
-        for i in range(len(self.obs_uids), self.max_obstacle_num):
+                if point[BULLET_CLOSEST_POINT_DISTANCE_INDEX] <= distance_to_obstacle:
+                    distance_to_obstacle = point[BULLET_CLOSEST_POINT_DISTANCE_INDEX]
+                    vector_to_obstacle = distance_to_obstacle * np.array(point[BULLET_CLOSEST_POINT_CONTACT_NORMAL_INDEX])
+            vector_obstacles.append(vector_to_obstacle[:self.workspace_dim])
+        for _ in range(len(self.obstacle_uids), self.max_obstacle_num):
             vector_obstacles.append(np.zeros((self.workspace_dim,)))
         
         vector_obstacles = np.array(vector_obstacles).flatten()
@@ -273,7 +277,7 @@ class RobotEnv(gym.Env):
             joint_vels,
             delta_x,
             vector_obstacles,
-            self.current_obs)
+            self.current_obstacles)
         )
         return self._observation
 
@@ -366,7 +370,7 @@ class RobotEnv(gym.Env):
 
         # rewards for obstacles
         reward_obs = 0.
-        for obs_uid in self.obs_uids:
+        for obs_uid in self.obstacle_uids:
             closest_points = self._p.getClosestPoints(self._robot.robot_uid, obs_uid, 1000)
             distance_to_obs = 1000.
             for point in closest_points:
@@ -421,7 +425,7 @@ class RobotEnv(gym.Env):
         check whether the robot is in collision with obstacles
         :param buffer: buffer for collision checking
         """
-        for obs_uid in self.obs_uids:
+        for obs_uid in self.obstacle_uids:
             closest_points = self._p.getClosestPoints(self._robot.robot_uid, obs_uid, buffer)
             if len(closest_points) > 0:
                 return True
@@ -442,7 +446,7 @@ class RobotEnv(gym.Env):
         """
         goal_position, _ = self._p.getBasePositionAndOrientation(self.goal_uid)
         collision_goal = add_collision_goal(self._p, goal_position)
-        for obs_uid in self.obs_uids:
+        for obs_uid in self.obstacle_uids:
             closest_points = self._p.getClosestPoints(collision_goal, obs_uid, buffer)
             if len(closest_points) > 0:
                 self._p.removeBody(collision_goal)
@@ -460,10 +464,10 @@ class RobotEnv(gym.Env):
             self._p.removeBody(self.goal_uid)
             self.goal_uid = None
         # clear previous obstacles
-        self.current_obs = []
-        for obs_uid in self.obs_uids:
+        self.current_obstacles = []
+        for obs_uid in self.obstacle_uids:
             self._p.removeBody(obs_uid)
-        self.obs_uids = []
+        self.obstacle_uids = []
 
 
     def _generate_random_initial_config(self):

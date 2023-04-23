@@ -77,10 +77,10 @@ class ThreeLinkResidualRMPEnv(ThreeLinkEnv):
 
     def _generate_random_obstacles(self):
         # additionally keep a obstacle tensor for computing rmp2 policy
-        current_obs, obs_uids = super()._generate_random_obstacles()
-        self._ts_obs = tf.convert_to_tensor([current_obs], dtype=self.dtype)
+        current_obstacles, obstacle_uids = super()._generate_random_obstacles()
+        self._ts_obs = tf.convert_to_tensor([current_obstacles], dtype=self.dtype)
         self._ts_obs = tf.reshape(self._ts_obs, (1, -1, self.workspace_dim + 1))
-        return current_obs, obs_uids
+        return current_obstacles, obstacle_uids
 
     def step(self, external_rmps):
         # unpack the flat output of the residual rmps
