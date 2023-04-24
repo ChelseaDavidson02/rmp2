@@ -71,6 +71,7 @@ class FrankaEnvSF(RobotEnv):
         else:
             current_goal = self.goal
         # generate goal object within pybullet
+        print(f"Current goal= {current_goal}")
         goal_uid = add_goal(self._p, current_goal)
         return current_goal, goal_uid
 

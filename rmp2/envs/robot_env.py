@@ -250,6 +250,33 @@ class RobotEnv(gym.Env):
         joint_poses, joint_vels, _ = self._robot.get_observation()
 
         # Move the obstacles here
+        # This didn't work because the forces are reset to 0 at each step of the simulation
+        # self._p.applyExternalForce(objectUniqueId=self.obstacle_uids[0], linkIndex=-1, forceObj=np.array([300,0,0]), posObj=self._p.getBasePositionAndOrientation(self.obstacle_uids[0])[0], flags=self._p.WORLD_FRAME)
+
+        move_obstacles=True
+        move_target=False
+
+        raw_velocity=[0,0.1,0]
+        velocity=np.array(raw_velocity)
+        velocity_per_step = velocity * self._time_step
+        
+        if move_obstacles:
+            # Move all of the obstacles by a constant velocity
+            values_per_obstacle= self.workspace_dim + 1  # current_obstacles is an array with Position(xyz) + radius
+            #velocity_add = np.tile([x*self._time_step for x in raw_velocity+[0]],len(self.obstacle_uids))
+            velocity_add = np.tile(np.append(velocity_per_step,[0]),len(self.obstacle_uids))
+            for i in range(len(self.obstacle_uids)):
+                self._p.resetBaseVelocity(objectUniqueId=self.obstacle_uids[i], linearVelocity=velocity)
+                # for dim in range(self.workspace_dim):
+                #     self.current_obstacles[i*values_per_obstacle+dim] += velocity_per_step[0]
+            self.current_obstacles=np.add(self.current_obstacles, velocity_add)
+
+        if move_target:
+            self._p.resetBaseVelocity(objectUniqueId=self.goal_uid, linearVelocity=velocity)
+            self.current_goal = np.add(self.current_goal, velocity_per_step)
+            #for dim in range(self.workspace_dim):
+            #    self.current_goal[dim] += velocity[0]
+
 
         # vector eef to goal
         eef_position = np.array(self._p.getLinkState(self._robot.robot_uid, self._robot.eef_uid)[BULLET_LINK_POSE_INDEX])
