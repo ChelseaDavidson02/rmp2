@@ -37,6 +37,7 @@ DEFAULT_CONFIG = {
     "workspace_radius": 1.,
     # goal setup
     "goal": None,
+    "waypoint_reaching": False,
     # initial config setup
     "q_init": None,
     # obstacle setups
@@ -71,6 +72,7 @@ DEFAULT_CONFIG = {
     "gravity": -9.8,
     # acceleration control mode
     "acc_control_mode": robot_sim.VEL_OPEN_LOOP,
+
 }
 
 
@@ -138,6 +140,12 @@ class RobotEnv(gym.Env):
         self.current_goal = None
         self.goal_uid = None
 
+        # set up waypoint reaching 
+        self.waypoint_reaching = config['waypoint_reaching']
+        if self.waypoint_reaching:
+            self.waypoints = config['waypoints']
+            self.waypoint_indx = 0
+
         # set up initial config
         self.q_init = config["q_init"]
 
@@ -200,6 +208,9 @@ class RobotEnv(gym.Env):
 
         self.goal_uid = None
         self.obstacle_uids = []
+        # Reset waypoint index
+        if self.waypoint_reaching:
+            self.waypoint_indx = 0
 
         # create robot
         self._robot = robot_sim.create_robot_sim(self.robot_name, self._p, self._time_step, mode=self._acc_control_mode)
@@ -253,7 +264,7 @@ class RobotEnv(gym.Env):
         # This didn't work because the forces are reset to 0 at each step of the simulation
         # self._p.applyExternalForce(objectUniqueId=self.obstacle_uids[0], linkIndex=-1, forceObj=np.array([300,0,0]), posObj=self._p.getBasePositionAndOrientation(self.obstacle_uids[0])[0], flags=self._p.WORLD_FRAME)
 
-        move_obstacles=True
+        move_obstacles=False
         move_target=False
 
         raw_velocity=[0,0.1,0]
@@ -277,10 +288,22 @@ class RobotEnv(gym.Env):
             #for dim in range(self.workspace_dim):
             #    self.current_goal[dim] += velocity[0]
 
-
         # vector eef to goal
         eef_position = np.array(self._p.getLinkState(self._robot.robot_uid, self._robot.eef_uid)[BULLET_LINK_POSE_INDEX])
         delta_x = self.current_goal[:self.workspace_dim] - eef_position[:self.workspace_dim]
+        distance_to_goal = np.linalg.norm(eef_position[:self.workspace_dim] - self.current_goal[:self.workspace_dim])
+        
+        # Waypoint reaching - check if robot eef has reached waypoint (within a threshold)
+        if self.waypoint_reaching and abs(distance_to_goal) < 0.005: 
+            print("Reached waypoint")
+            if self.waypoint_indx < len(self.waypoints)-1: # Check that current waypoint isn't the last one
+                print("Moving to next waypoint")
+                self.waypoint_indx += 1  # Update which waypoint coords will become goal
+                self.current_goal = self.waypoints[self.waypoint_indx] # Move goal to next waypoint
+                # Update simulation with new goal position
+                new_orientation = self._p.getQuaternionFromEuler([0, 0, 0])
+                self._p.resetBasePositionAndOrientation(self.goal_uid, self.current_goal, new_orientation)
+
 
         # vector to closest point on obstacles
         vector_obstacles = []
@@ -367,11 +390,12 @@ class RobotEnv(gym.Env):
     def _termination(self):
         """
         check wether the current episode is terminated
-        due to either out of steps or collision
+        due to reaching the goal, being out of steps, or collision
         """
         if (self.terminated or self._env_step_counter > self._horizon):
             self._observation = self.get_extended_observation()
             self.terminated = True
+            print("Time ran out")
             return True
         
         # check collision only if terminates after collision
@@ -380,6 +404,16 @@ class RobotEnv(gym.Env):
         
         # check collision with obstacles
         if self._collision():
+            print("Collision oh no")
+            self.terminated = True
+            return True
+        
+        # Check if it has reached the goal
+        eef_position = np.array(self._p.getLinkState(self._robot.robot_uid, self._robot.eef_uid)[BULLET_LINK_POSE_INDEX])
+        distance_to_goal = np.linalg.norm(eef_position[:self.workspace_dim] - self.current_goal[:self.workspace_dim])
+        #print(distance_to_goal)
+        if distance_to_goal < 0.0015:
+            print("Reached goal yay")
             self.terminated = True
             return True
         

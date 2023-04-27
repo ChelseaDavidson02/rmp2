@@ -25,9 +25,13 @@ config = {
     "min_obstacle_num": 4,    
     "min_obstacle_radius": 0.02,    
     "max_obstacle_radius": 0.05,
+    "waypoints": [[0.3, -0.3, 0.3], [0.3, -0.3, 1], [0.5, -0.5, 0.5]],
+    "waypoint_reaching": True
 }
-
-goal = tf.convert_to_tensor([config['goal']])
+if config['waypoint_reaching']:
+    goal = config['waypoints'][0]
+else:
+    goal = tf.convert_to_tensor([config['goal']])
 
 def policy(state,env):
     ts_state = tf.convert_to_tensor([state])

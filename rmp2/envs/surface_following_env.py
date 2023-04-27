@@ -58,7 +58,7 @@ class FrankaEnvSF(RobotEnv):
             config=config)
 
     def _generate_random_goal(self):
-        # if goal is given, use the fixed goal
+        # if goal is not given, sample a random goal with the specified parameters
         if self.goal is None:
             current_goal = sample_from_torus_3d(
                 self.np_random,
@@ -67,7 +67,10 @@ class FrankaEnvSF(RobotEnv):
                 self._goal_torus_major_radius,
                 self._goal_torus_minor_radius,
                 self._goal_torus_height)
-        # otherwise, sample a random goal with the specified parameters
+        # if doing waypoint reaching, use the first waypoint as the first goal
+        elif self.waypoint_reaching:
+            current_goal = self.waypoints[self.waypoint_indx]
+        # otherwise, use the given goal
         else:
             current_goal = self.goal
         # generate goal object within pybullet

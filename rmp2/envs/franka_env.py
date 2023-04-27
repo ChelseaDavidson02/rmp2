@@ -80,7 +80,7 @@ class FrankaEnv(RobotEnv):
 
         # if obstacle config list is given, sample one config from the list
         if self.obstacle_cofigs is not None:
-            config = self.obstacle_cofigs[self.np_random.randint(len(self.obstacle_cofigs))]
+            config = self.obstacle_cofigs[self.np_random.integers(len(self.obstacle_cofigs))]
             for (i, obstacle) in enumerate(config):
                 obstacle_uids.append(
                     add_obstacle_ball(self._p, obstacle['center'], obstacle['radius'])
@@ -90,7 +90,7 @@ class FrankaEnv(RobotEnv):
                 current_obstacles.append(np.append(np.zeros(self.workspace_dim), -1.))
         # otherwise, sample random obstacles with the specified parameters
         else:
-            num_obstacles = self.np_random.randint(self.min_obstacle_num, self.max_obstacle_num + 1)
+            num_obstacles = self.np_random.integers(self.min_obstacle_num, self.max_obstacle_num + 1)
             for i in range(self.max_obstacle_num):
                 if i < num_obstacles:
                     radius = self.np_random.uniform(low=self.min_obstacle_radius, high=self.max_obstacle_radius)
