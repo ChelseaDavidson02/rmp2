@@ -16,10 +16,10 @@ DEFAULT_CONFIG = {
     "goal_torus_minor_radius": 0.3,
     "goal_torus_height": 0.5,
     # parameters for randomly generated obstacles
-    "obs_torus_angle_center": 0., 
-    "obs_torus_angle_range": np.pi,
-    "obs_torus_major_radius": 0.5,
-    "obs_torus_minor_radius": 0.3,
+    "obs_torus_angle_center": np.pi, # 0.
+    "obs_torus_angle_range": 2*np.pi,# np.pi
+    "obs_torus_major_radius": 1, # 0.5
+    "obs_torus_minor_radius": 0.5, # 0.3
     "obs_torus_height": 0.5,
     # obstacle size
     "max_obstacle_radius": 0.1,

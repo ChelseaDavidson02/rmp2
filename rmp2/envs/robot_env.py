@@ -41,6 +41,8 @@ DEFAULT_CONFIG = {
     # initial config setup
     "q_init": None,
     # obstacle setups
+    "dynamic_env": False,
+    "monorail_vel": None,
     "obstacle_configs": None,
     "max_obstacle_num": 3,
     "min_obstacle_num": 3,
@@ -114,6 +116,7 @@ class RobotEnv(gym.Env):
         self._cam_pitch = config['cam_pitch']
         self._cam_position = config['cam_position']
         self._gravity = config['gravity']
+        
 
         # connect to pybullet environment
         self._p = p
@@ -149,6 +152,13 @@ class RobotEnv(gym.Env):
         # set up initial config
         self.q_init = config["q_init"]
 
+        # set up dynamic environment
+        self.dynamic_env = config["dynamic_env"]
+        self.monorail_vel = config["monorail_vel"]
+        # If monorail velocity isn't set but the environment is dynamic, set it to a default
+        if self.dynamic_env and self.monorail_vel == None:
+            self.monorail_vel = [0,0.1,0]
+        
         # set up obstacle config
         self.obstacle_cofigs = config["obstacle_configs"]
         if self.obstacle_cofigs is None:
@@ -248,6 +258,7 @@ class RobotEnv(gym.Env):
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
+            
 
     def get_extended_observation(self):
         """
@@ -260,33 +271,27 @@ class RobotEnv(gym.Env):
         """
         joint_poses, joint_vels, _ = self._robot.get_observation()
 
-        # Move the obstacles here
-        # This didn't work because the forces are reset to 0 at each step of the simulation
-        # self._p.applyExternalForce(objectUniqueId=self.obstacle_uids[0], linkIndex=-1, forceObj=np.array([300,0,0]), posObj=self._p.getBasePositionAndOrientation(self.obstacle_uids[0])[0], flags=self._p.WORLD_FRAME)
 
-        move_obstacles=False
-        move_target=False
+        # Implement a dynamic environment - move all obstacles by a constant velocity
+        if self.dynamic_env:
+            # Calculate velocity at each timestep
+            velocity=np.array(self.monorail_vel)
+            velocity_per_step = velocity * self._time_step
+            
+            # Change velocity dimensions so they can be added to the current_obstacle array
+            velocity_to_add = np.tile(np.append(velocity_per_step,[0]),len(self.obstacle_uids))
+            
+            
+            # Update position of each obstacle
+            self.current_obstacles=np.add(self.current_obstacles, velocity_to_add)
+            
+            # Update simulation with new obstacle position
+            for i in range(len(self.obstacle_uids)):  
+                obstacle_indx = i*(self.workspace_dim + 1)  # current_obstacles is an array with Position(xyz) + radius for each obstacle
 
-        raw_velocity=[0,0.1,0]
-        velocity=np.array(raw_velocity)
-        velocity_per_step = velocity * self._time_step
-        
-        if move_obstacles:
-            # Move all of the obstacles by a constant velocity
-            values_per_obstacle= self.workspace_dim + 1  # current_obstacles is an array with Position(xyz) + radius
-            #velocity_add = np.tile([x*self._time_step for x in raw_velocity+[0]],len(self.obstacle_uids))
-            velocity_add = np.tile(np.append(velocity_per_step,[0]),len(self.obstacle_uids))
-            for i in range(len(self.obstacle_uids)):
-                self._p.resetBaseVelocity(objectUniqueId=self.obstacle_uids[i], linearVelocity=velocity)
-                # for dim in range(self.workspace_dim):
-                #     self.current_obstacles[i*values_per_obstacle+dim] += velocity_per_step[0]
-            self.current_obstacles=np.add(self.current_obstacles, velocity_add)
-
-        if move_target:
-            self._p.resetBaseVelocity(objectUniqueId=self.goal_uid, linearVelocity=velocity)
-            self.current_goal = np.add(self.current_goal, velocity_per_step)
-            #for dim in range(self.workspace_dim):
-            #    self.current_goal[dim] += velocity[0]
+                new_orientation = self._p.getQuaternionFromEuler([0, 0, 0]) # orientation doesn't matter with sphere
+                new_position = self.current_obstacles[obstacle_indx : obstacle_indx+self.workspace_dim] # use new calculated position to update sim
+                self._p.resetBasePositionAndOrientation(self.obstacle_uids[i], new_position, new_orientation)
 
         # vector eef to goal
         eef_position = np.array(self._p.getLinkState(self._robot.robot_uid, self._robot.eef_uid)[BULLET_LINK_POSE_INDEX])
@@ -412,7 +417,7 @@ class RobotEnv(gym.Env):
         eef_position = np.array(self._p.getLinkState(self._robot.robot_uid, self._robot.eef_uid)[BULLET_LINK_POSE_INDEX])
         distance_to_goal = np.linalg.norm(eef_position[:self.workspace_dim] - self.current_goal[:self.workspace_dim])
         #print(distance_to_goal)
-        if distance_to_goal < 0.0015:
+        if distance_to_goal < 0.0025:
             print("Reached goal yay")
             self.terminated = True
             return True

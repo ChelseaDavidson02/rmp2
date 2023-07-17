@@ -17,16 +17,18 @@ rmp_graph = RobotRMPGraph(robot_name="franka", dtype=dtype, timed=True)
 
 config = {
     "goal": [0.5, -0.5, 0.5],
-    "horizon": 1800,
+    "horizon": 6000, # 1800
     "action_repeat": 3, # Repeat the action for this many time steps
     "q_init": [ 0.0000, -0.7854,  0.0000, -2.4435,  0.0000,  1.6581,  0.75],
     "render": True,
-    "max_obstacle_num": 4,
-    "min_obstacle_num": 4,    
-    "min_obstacle_radius": 0.02,    
-    "max_obstacle_radius": 0.05,
-    "waypoints": [[0.3, -0.3, 0.3], [0.3, -0.3, 1], [0.5, -0.5, 0.5]],
-    "waypoint_reaching": True
+    "max_obstacle_num": 8,  # 4
+    "min_obstacle_num": 8,  # 4  
+    "min_obstacle_radius": 0.05,    # 0.02
+    "max_obstacle_radius": 0.08,    # 0.05
+    "waypoints": [[0.3, -0.2, 0.2], [0.3, -0.225, 0.225],[0.3, -0.25, 0.25], [0.3, -0.275, 0.275],[0.3, -0.3, 0.3], [0.3, -0.325, 0.325],[0.3, -0.35, 0.35], [0.3, -0.375, 0.375],[0.3, -0.4, 0.4], [0.3, -0.425, 0.425],[0.3, -0.45, 0.45],[0.3, -0.475, 0.475],[0.3, -0.5, 0.5]],
+    "waypoint_reaching": True,
+    "dynamic_env": True,
+    "monorail_vel": [0,0.2,0]
 }
 if config['waypoint_reaching']:
     goal = config['waypoints'][0]
