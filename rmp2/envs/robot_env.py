@@ -286,17 +286,16 @@ class RobotEnv(gym.Env):
             # Change velocity dimensions so they can be added to the current_obstacle array
             velocity_to_add = np.tile(np.append(velocity_per_step,[0]),len(self.obstacle_uids))
             
-            
             # Update position of each obstacle
             self.current_obstacles=np.add(self.current_obstacles, velocity_to_add)
             
             # Update simulation with new obstacle position
             for i in range(len(self.obstacle_uids)):  
                 obstacle_indx = i*(self.workspace_dim + 1)  # current_obstacles is an array with Position(xyz) + radius for each obstacle
-
-                new_orientation = self._p.getQuaternionFromEuler([0, 0, 0]) # orientation doesn't matter with sphere
+                currentPos, currentOrient = self._p.getBasePositionAndOrientation(self.obstacle_uids[i])
+                # new_orientation = self._p.getQuaternionFromEuler([0, 0, 0]) # orientation doesn't matter with sphere
                 new_position = self.current_obstacles[obstacle_indx : obstacle_indx+self.workspace_dim] # use new calculated position to update sim
-                self._p.resetBasePositionAndOrientation(self.obstacle_uids[i], new_position, new_orientation)
+                self._p.resetBasePositionAndOrientation(self.obstacle_uids[i], new_position, currentOrient)
 
         # vector eef to goal
         eef_position = np.array(self._p.getLinkState(self._robot.robot_uid, self._robot.eef_uid)[BULLET_LINK_POSE_INDEX])
