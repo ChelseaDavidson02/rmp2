@@ -293,7 +293,6 @@ class RobotEnv(gym.Env):
             for i in range(len(self.obstacle_uids)):  
                 obstacle_indx = i*(self.workspace_dim + 1)  # current_obstacles is an array with Position(xyz) + radius for each obstacle
                 currentPos, currentOrient = self._p.getBasePositionAndOrientation(self.obstacle_uids[i])
-                # new_orientation = self._p.getQuaternionFromEuler([0, 0, 0]) # orientation doesn't matter with sphere
                 new_position = self.current_obstacles[obstacle_indx : obstacle_indx+self.workspace_dim] # use new calculated position to update sim
                 self._p.resetBasePositionAndOrientation(self.obstacle_uids[i], new_position, currentOrient)
 
