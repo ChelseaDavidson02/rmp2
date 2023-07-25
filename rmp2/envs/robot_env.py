@@ -14,11 +14,16 @@ import time
 from pkg_resources import parse_version
 from abc import abstractmethod
 from sys import float_info
+import math
 
 # visualization configs
 largeValObservation = 100
 RENDER_HEIGHT = 720
 RENDER_WIDTH = 960
+
+# simulated camera configs
+CAM_DISTANCE = 100000
+IMG_W, IMG_H = 120, 80
 
 # pybullet macros
 BULLET_LINK_POSE_INDEX = 4
@@ -352,12 +357,39 @@ class RobotEnv(gym.Env):
             if self._render:
                 computation_time = time.time() - time_start
                 time.sleep(max(self._time_step - computation_time, 0.))
+                
+            # update camera
+            agent_pos, agent_orn =self._p.getBasePositionAndOrientation(self._robot.robot_uid)
+
+            yaw = self._p.getEulerFromQuaternion(agent_orn)[-1]
+            xA, yA, zA = agent_pos
+            zA = zA + 0.3 # make the camera a little higher than the robot
+
+            # compute focusing point of the camera
+            xB = xA + math.cos(yaw) * CAM_DISTANCE
+            yB = yA + math.sin(yaw) * CAM_DISTANCE
+            zB = zA
+
+            view_matrix = self._p.computeViewMatrix(
+                                cameraEyePosition=[xA, yA, zA],
+                                cameraTargetPosition=[xB, yB, zB],
+                                cameraUpVector=[0, 0, 1.0]
+                            )
+
+            projection_matrix = self._p.computeProjectionMatrixFOV(
+                                    fov=90, aspect=1.5, nearVal=0.02, farVal=3.5)
+
+            imgs = self._p.getCameraImage(IMG_W, IMG_H,
+                                    view_matrix,
+                                    projection_matrix, shadow=True,
+                                    renderer=self._p.ER_BULLET_HARDWARE_OPENGL)
             
             # check if terminated
             if self._termination():
                 done = True
                 break
             self._env_step_counter += 1
+            
         
         reward = _reward / (i + 1)
             
