@@ -4,6 +4,7 @@ acceleration-based control for a pybullet robot
 
 from rmp2.utils.robot_config_utils import get_robot_urdf_path, get_robot_eef_uid
 import numpy as np
+import math
 
 # pybullet macro
 JOINT_POSE_IDX = 0
@@ -16,6 +17,10 @@ JOINT_LOWER_LIMIT_IDX = 8
 JOINT_UPPER_LIMIT_IDX = 9
 JOINT_VEL_LIMIT_IDX = 11
 LINK_NAME_IDX = 12
+
+# simulated camera configs
+CAM_DISTANCE = 100000
+IMG_W, IMG_H = 120, 80
 
 # control modes:
 
@@ -109,6 +114,32 @@ class RobotSim(object):
             self.robot_uid, self._joint_indices, 
             self.bullet_client.POSITION_CONTROL, 
             targetPositions=self.target_joint_poses, targetVelocities=self.target_joint_vels)
+        
+        # update camera
+        agent_pos, agent_orn =self.bullet_client.getBasePositionAndOrientation(self.robot_uid)
+
+        yaw = self.bullet_client.getEulerFromQuaternion(agent_orn)[-1]
+        xA, yA, zA = agent_pos
+        zA = zA + 0.3 # make the camera a little higher than the robot
+
+        # compute focusing point of the camera
+        xB = xA + math.cos(yaw) * CAM_DISTANCE
+        yB = yA + math.sin(yaw) * CAM_DISTANCE
+        zB = zA
+
+        view_matrix = self.bullet_client.computeViewMatrix(
+                            cameraEyePosition=[xA, yA, zA],
+                            cameraTargetPosition=[xB, yB, zB],
+                            cameraUpVector=[0, 0, 1.0]
+                        )
+
+        projection_matrix = self.bullet_client.computeProjectionMatrixFOV(
+                                fov=90, aspect=1.5, nearVal=0.02, farVal=3.5)
+
+        imgs = self.bullet_client.getCameraImage(IMG_W, IMG_H,
+                                view_matrix,
+                                projection_matrix, shadow=True,
+                                renderer=self.bullet_client.ER_BULLET_HARDWARE_OPENGL)
 
     def get_observation(self):
         """
