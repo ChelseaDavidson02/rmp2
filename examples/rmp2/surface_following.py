@@ -7,6 +7,7 @@ from rmp2.rmpgraph import RobotRMPGraph
 from rmp2.envs import FrankaEnvSF
 from rmp2.utils.env_wrappers import FrankaFullRMPWrapper
 import tensorflow as tf
+from math import pi
 
 n_trials = 15
 seed = 15
@@ -19,7 +20,7 @@ config = {
     "goal": [0.5, -0.5, 0.5],
     "horizon": 6000, # 1800
     "action_repeat": 3, # Repeat the action for this many time steps
-    "q_init": [ 0.0000, -0.7854,  0.0000, -2.4435,  0.0000,  1.6581,  0.75],
+    "q_init": [ 0.0000, -pi/5,  0.0000, -1*pi/2,  0.0000,  3*pi/4,  pi/4],
     "render": True,
     "max_obstacle_num": 8,  # 4
     "min_obstacle_num": 8,  # 4  

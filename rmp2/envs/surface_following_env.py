@@ -121,22 +121,20 @@ class FrankaEnvSF(RobotEnv):
         obstacle_uids = []
         
         # Adding big tunnel
-        obstacle_uids.append(add_obstacle_cylinder(self._p, [1.5,0,0], radius=1))
+        obstacle_uids.append(add_obstacle_cylinder(self._p, [1.5,0,1.2], radius=1))
         
         # TODO - this centre and radius value seen as centre, radius below, is hard coded
-        current_obstacles.append(np.append([1.5,0,0], 1))
+        current_obstacles.append(np.append([1.5,0,1.2], 1))
 
         # Adding cubes
-    
-        for i in range(20):
-            num1 = random.randint(-4, 4)
-            num2 = random.randint(-100, 100)
-            center = [0.5,0.1*num2, 0.1*num1]
-            obstacle_uids.append(add_obstacle_cuboid(self._p, center))
+        for i in range(30):
+            # randomly scatter cubes along the tunnel wall
+            center = [random.uniform(0.4,0.6),random.uniform(-10, 10), random.uniform(0.5, 1.7)]
+            s = random.uniform(0.05, 0.2) # side length
+            obstacle_uids.append(add_obstacle_cuboid(self._p, center, size=[s, s, s]))
             
             # TODO - this centre and radius value seen as centre, radius below, is hard coded
-            # current_obstacles.append(np.append([0.5,-0.8,1.25], 0.03))
-            current_obstacles.append(np.append(center, 0.03))
+            current_obstacles.append(np.append(center, s/4))
         
 
         current_obstacles = np.array(current_obstacles).flatten()

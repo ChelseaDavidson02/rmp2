@@ -77,6 +77,7 @@ class RobotSim(object):
         """
         reset the robot to initial configuration and velocity
         """
+
         initial_config = np.array(initial_config)
         initial_vel = np.array(initial_vel)
 
@@ -118,7 +119,7 @@ class RobotSim(object):
         # update camera
         agent_pos, agent_orn =self.bullet_client.getBasePositionAndOrientation(self.robot_uid)
 
-        yaw = self.bullet_client.getEulerFromQuaternion(agent_orn)[-1]
+        yaw = self.bullet_client.getEulerFromQuaternion(agent_orn)[-1] - math.pi/5
         xA, yA, zA = agent_pos
         zA = zA + 0.3 # make the camera a little higher than the robot
 
@@ -219,4 +220,5 @@ def create_robot_sim(robot_name, bullet_client, time_step, mode=VEL_OPEN_LOOP):
     eef_uid = get_robot_eef_uid(robot_name)
     robot_sim = RobotSim(urdf_path, eef_uid, bullet_client=bullet_client, time_step=time_step, mode=mode)
     return robot_sim
+
 
