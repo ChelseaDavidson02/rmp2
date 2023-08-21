@@ -117,6 +117,8 @@ class FrankaEnvSF(RobotEnv):
     #     return current_obstacles, obstacle_uids
     
     def _generate_random_obstacles(self):
+        # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0) # code to disable rendering - need to find a pybullet client to use instead of p
+
         current_obstacles = []
         obstacle_uids = []
         
@@ -130,11 +132,11 @@ class FrankaEnvSF(RobotEnv):
         for i in range(30):
             # randomly scatter cubes along the tunnel wall
             center = [random.uniform(0.4,0.6),random.uniform(-10, 10), random.uniform(0.5, 1.7)]
-            s = random.uniform(0.05, 0.2) # side length
+            s = random.uniform(0.05, 0.2) # half side length
             obstacle_uids.append(add_obstacle_cuboid(self._p, center, size=[s, s, s]))
             
             # TODO - this centre and radius value seen as centre, radius below, is hard coded
-            current_obstacles.append(np.append(center, s/4))
+            current_obstacles.append(np.append(center, s))
         
 
         current_obstacles = np.array(current_obstacles).flatten()

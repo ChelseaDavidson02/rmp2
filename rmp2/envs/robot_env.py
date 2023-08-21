@@ -15,6 +15,7 @@ from pkg_resources import parse_version
 from abc import abstractmethod
 from sys import float_info
 import math
+from rmp2.envs.camera_sim import Camera
 
 # visualization configs
 largeValObservation = 100
@@ -71,6 +72,7 @@ DEFAULT_CONFIG = {
     "cam_yaw": 30,
     "cam_pitch": -45,
     "cam_position": [0, 0, 0],
+    "sim_cam_yaws": None,
     # pybullet gravity
     "gravity": -9.8,
     # acceleration control mode
@@ -132,6 +134,12 @@ class RobotEnv(gym.Env):
                     cameraTargetPosition=self._cam_position)
         else:
             self._p.connect(p.DIRECT)
+            
+        # initialise the simulated camera
+        self.camera = Camera(self._p)
+        self.camera.setup_plot()
+        self.sim_cam_yaws = config['sim_cam_yaws']
+        
         
         # create the robot in pybullet
         self._robot = robot_sim.create_robot_sim(self.robot_name, self._p, self._time_step)
@@ -337,6 +345,11 @@ class RobotEnv(gym.Env):
 
 
     def step(self, action):
+        #update simulated depth camera and get the point cloud
+        points = self.camera.step_sensing(robot=self._robot, cam_yaws=self.sim_cam_yaws)
+        print(len(points))
+         
+        
         action = np.clip(action, self._action_space.low, self._action_space.high)
         action[np.isnan(action)] = 0.
         _reward = 0

@@ -1,13 +1,12 @@
 """
-helper functions for simulating camera 
+Class for simulating camera 
 """
 
-import pybullet as p
 import pybullet_data
 import math
 from math import pi
 import random
-import robot_sim
+from rmp2.envs import robot_sim
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -15,17 +14,18 @@ from mpl_toolkits.mplot3d import Axes3D
 import time
 
 class Camera():
-    def __init__(self):
+    def __init__(self, bullet_client, IMG_W=128, IMG_H=128, CAM_DISTANCE=100000):
         
         # simulated camera configs
-        self.CAM_DISTANCE = 100000
-        self.IMG_W, self.IMG_H = 128, 128
+        self.CAM_DISTANCE = CAM_DISTANCE
+        self.IMG_W, self.IMG_H = IMG_W, IMG_H
         self.ax = None
         self.figure = None
+        self.bullet_client = bullet_client
     
         
     def get_point_cloud(self, im, view_matrix, proj_matrix):
-        # based on https://stackoverflow.com/questions/59128880/getting-world-coordinates-from-opengl-depth-buffer
+        # adapted from https://stackoverflow.com/questions/59128880/getting-world-coordinates-from-opengl-depth-buffer
 
         # get a depth image
         # "infinite" depths will have a value close to 1
@@ -56,11 +56,12 @@ class Camera():
 
     
     def plot_point_cloud_dynamic(self, points):
+        self.ax.cla() #clearing the plot ready for the next one
         x_coords, y_coords, z_coords = points[:, 0], points[:, 1], points[:, 2]
-        self.ax.plot(x_coords, y_coords, z_coords)
+        self.ax.scatter(x_coords, y_coords, z_coords, s=5)
         plt.draw()
-        plt.pause(0.02)
-        self.ax.cla()
+        plt.pause(0.01) #TODO
+        
     
     def setup_plot(self):
         # to run GUI event loop
@@ -74,47 +75,73 @@ class Camera():
         self.ax.set_ylabel('Y')
         self.ax.set_zlabel('Z')
         
-        self.ax.axes.set_xlim3d(left=0, right=2) 
-        self.ax.axes.set_ylim3d(bottom=-1, top=1) 
-        self.ax.axes.set_zlim3d(bottom=0, top=2) 
+        self.ax.axes.set_xlim3d(left=0, right=10) 
+        self.ax.axes.set_ylim3d(bottom=-10, top=10) 
+        self.ax.axes.set_zlim3d(bottom=0, top=10) 
 
 
         # setting title
         plt.title("Point Cloud", fontsize=20)
         
     
-    def update_camera(self, robot, view, height):
+    def update_camera(self, robot, cam_yaw, cam_x_dist=0.1):
+        # adapted from https://ai.aioz.io/guides/robotics/2021-05-19-visual-obs-pybullet/ 
         # finding position of the camera
-        agent_pos, agent_orn =p.getBasePositionAndOrientation(robot.robot_uid)
+        #agent_pos, agent_orn = self.bullet_client.getBasePositionAndOrientation(robot.robot_uid)
 
-        yaw = p.getEulerFromQuaternion(agent_orn)[-1] + view #- pi/6
-        xA, yA, zA = agent_pos
-        zA = zA + height # make the camera a little higher than the robot
-        # print(xA, yA, zA)
+        # set the camera at the end-effector link
+        end_effector_link_index = 9
+
+        # Get the end-effector's position and orientation
+        eef_pos, eef_orient, _, _, _, _ = self.bullet_client.getLinkState(robot.robot_uid, end_effector_link_index)
+        yaw = cam_yaw #self.bullet_client.getEulerFromQuaternion(eef_orient)[-1] + cam_yaw #- pi/6
+        xA, yA, zA = eef_pos
+        xA = xA + cam_x_dist # make the camera a little further forward than the robot - stops it from being in frame
 
         # compute focusing point of the camera
         xB = xA + math.cos(yaw) * self.CAM_DISTANCE
         yB = yA + math.sin(yaw) * self.CAM_DISTANCE
         zB = zA
 
-        view_matrix = p.computeViewMatrix(
+        view_matrix = self.bullet_client.computeViewMatrix(
                             cameraEyePosition=[xA, yA, zA],
                             cameraTargetPosition=[xB, yB, zB],
                             cameraUpVector=[0, 0, 1.0]
                         )
 
-        projection_matrix = p.computeProjectionMatrixFOV(
-                                fov=80, aspect=float(self.IMG_W/self.IMG_H), nearVal=0.05, farVal=100.0)
+        projection_matrix = self.bullet_client.computeProjectionMatrixFOV(
+                                fov=80, aspect=float(self.IMG_W/self.IMG_H), nearVal=0.005, farVal=200.0)
         #show where the camera is pointing
-        line_ID = p.addUserDebugLine([xA, yA, zA], [xB, yB, zB], lineColorRGB=[0, 0, 1])
+        line_ID = self.bullet_client.addUserDebugLine([xA, yA, zA], [xB, yB, zB], lineColorRGB=[0, 0, 1])
 
         # Making images
-        imgs = p.getCameraImage(self.IMG_W, self.IMG_H,
+        imgs = self.bullet_client.getCameraImage(self.IMG_W, self.IMG_H,
                                 view_matrix,
                                 projection_matrix, shadow=True,
-                                renderer=p.ER_BULLET_HARDWARE_OPENGL)
+                                renderer=self.bullet_client.ER_BULLET_HARDWARE_OPENGL)
         
-        return imgs, view_matrix, projection_matrix
+        return imgs, view_matrix, projection_matrix, line_ID
+    
+    def step_sensing(self, robot, cam_yaws):
+        """
+        Captures camera data in the current pybullet environment, plots the point cloud and returns points 
+        representing the point cloud of the current environment. 
+        """
+        combined_points = []
+        for i in range(len(cam_yaws)):
+            imgs_i, view_matrix_i, projection_matrix_i, line_ID_i = self.update_camera(robot, cam_yaw=cam_yaws[i])
+            points_i = self.get_point_cloud(im = imgs_i ,view_matrix=view_matrix_i, proj_matrix=projection_matrix_i)
+            combined_points.append(points_i)
+            self.bullet_client.removeUserDebugItem(line_ID_i) #removing the line which represents the current camera line of sight
+        combined_points_stack = np.vstack(combined_points)
+        unique_combined_points = np.unique(combined_points_stack, axis=0) # removing any points which were found in multiple camera angles
+        self.plot_point_cloud_dynamic(points=unique_combined_points)
+        
+        
+        return unique_combined_points
+        
+        
+    
 
 
 # def main():
@@ -122,7 +149,7 @@ class Camera():
 #     # Initialize the simulation
 #     time_step = 1/240.
 #     iterations = 100
-#     cam = Camera()
+#     cam = Camera(p)
 
 #     physicsClient = p.connect(p.GUI)
 #     p.setAdditionalSearchPath(pybullet_data.getDataPath())

@@ -71,7 +71,7 @@ class RobotSim(object):
 
         self._set_joint_indices()
         self.cspace_dim = len(self._joint_indices)
-
+        
 
     def reset(self, initial_config, initial_vel):
         """
@@ -116,31 +116,7 @@ class RobotSim(object):
             self.bullet_client.POSITION_CONTROL, 
             targetPositions=self.target_joint_poses, targetVelocities=self.target_joint_vels)
         
-        # update camera
-        agent_pos, agent_orn =self.bullet_client.getBasePositionAndOrientation(self.robot_uid)
-
-        yaw = self.bullet_client.getEulerFromQuaternion(agent_orn)[-1] - math.pi/5
-        xA, yA, zA = agent_pos
-        zA = zA + 0.3 # make the camera a little higher than the robot
-
-        # compute focusing point of the camera
-        xB = xA + math.cos(yaw) * CAM_DISTANCE
-        yB = yA + math.sin(yaw) * CAM_DISTANCE
-        zB = zA
-
-        view_matrix = self.bullet_client.computeViewMatrix(
-                            cameraEyePosition=[xA, yA, zA],
-                            cameraTargetPosition=[xB, yB, zB],
-                            cameraUpVector=[0, 0, 1.0]
-                        )
-
-        projection_matrix = self.bullet_client.computeProjectionMatrixFOV(
-                                fov=90, aspect=1.5, nearVal=0.02, farVal=3.5)
-
-        imgs = self.bullet_client.getCameraImage(IMG_W, IMG_H,
-                                view_matrix,
-                                projection_matrix, shadow=True,
-                                renderer=self.bullet_client.ER_BULLET_HARDWARE_OPENGL)
+        
 
     def get_observation(self):
         """
