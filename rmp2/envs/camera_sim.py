@@ -2,14 +2,10 @@
 Class for simulating camera 
 """
 
-import pybullet_data
 import math
 from math import pi
-import random
-from rmp2.envs import robot_sim
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 # from bullet_utils import add_obstacle_cuboid, add_obstacle_cylinder, add_obstacle_ball
 import time
 
