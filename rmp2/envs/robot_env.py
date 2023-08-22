@@ -72,7 +72,11 @@ DEFAULT_CONFIG = {
     "cam_yaw": 30,
     "cam_pitch": -45,
     "cam_position": [0, 0, 0],
+    #point cloud setup
+    "simulating_point_cloud": False,
     "sim_cam_yaws": None,
+    "point_cloud_radius": 0,
+    "max_num_depth_points": 0,
     # pybullet gravity
     "gravity": -9.8,
     # acceleration control mode
@@ -135,11 +139,15 @@ class RobotEnv(gym.Env):
         else:
             self._p.connect(p.DIRECT)
             
-        # initialise the simulated camera
-        self.camera = Camera(self._p)
-        self.camera.setup_plot()
+        # initialise the simulated camera and point cloud
+        self.simulating_point_cloud = config["simulating_point_cloud"]
         self.sim_cam_yaws = config['sim_cam_yaws']
+        self.point_cloud_radius = config['point_cloud_radius']
+        self.max_num_depth_points = config["max_num_depth_points"]
         
+        if self.simulating_point_cloud:
+            self.camera = Camera(self._p)
+            self.camera.setup_plot()
         
         # create the robot in pybullet
         self._robot = robot_sim.create_robot_sim(self.robot_name, self._p, self._time_step)
@@ -240,6 +248,15 @@ class RobotEnv(gym.Env):
             self._generate_random_initial_config()
             self.current_goal, self.goal_uid = self._generate_random_goal()
             self.current_obstacles, self.obstacle_uids = self._generate_random_obstacles()
+            
+            # override the current obstacles with the ones found from the sensed camera
+            if self.simulating_point_cloud:
+                points = self.camera.step_sensing(robot=self._robot, cam_yaws=self.sim_cam_yaws)
+                radius_column = np.full((points.shape[0], 1), self.point_cloud_radius)
+                current_obstacles_array = np.hstack((points, radius_column))
+                self.current_obstacles = np.array(current_obstacles_array).flatten()
+                self.max_num_depth_points = len(points)
+            
             self._p.stepSimulation()
 
             # check if the initial configuration is valid
@@ -288,17 +305,42 @@ class RobotEnv(gym.Env):
             velocity_per_step = velocity * self._time_step
             
             # Change velocity dimensions so they can be added to the current_obstacle array
-            velocity_to_add = np.tile(np.append(velocity_per_step,[0]),len(self.obstacle_uids))
+            # velocity_to_add = np.tile(np.append(velocity_per_step,[0]),len(self.obstacle_uids))
             
             # Update position of each obstacle
-            self.current_obstacles=np.add(self.current_obstacles, velocity_to_add)
+            # self.current_obstacles=np.add(self.current_obstacles, velocity_to_add)
             
+            # # Update simulation with new obstacle position
+            # for i in range(len(self.obstacle_uids)):  
+            #     obstacle_indx = i*(self.workspace_dim + 1)  # current_obstacles is an array with Position(xyz) + radius for each obstacle
+            #     currentPos, currentOrient = self._p.getBasePositionAndOrientation(self.obstacle_uids[i])
+            #     new_position = self.current_obstacles[obstacle_indx : obstacle_indx+self.workspace_dim] # use new calculated position to update sim
+            #     self._p.resetBasePositionAndOrientation(self.obstacle_uids[i], new_position, currentOrient)
+                        
             # Update simulation with new obstacle position
             for i in range(len(self.obstacle_uids)):  
-                obstacle_indx = i*(self.workspace_dim + 1)  # current_obstacles is an array with Position(xyz) + radius for each obstacle
                 currentPos, currentOrient = self._p.getBasePositionAndOrientation(self.obstacle_uids[i])
-                new_position = self.current_obstacles[obstacle_indx : obstacle_indx+self.workspace_dim] # use new calculated position to update sim
+                new_position = np.add(currentPos, velocity_per_step)  # find new position to update sim
                 self._p.resetBasePositionAndOrientation(self.obstacle_uids[i], new_position, currentOrient)
+                
+            # Update the current obstacles with the ones found from the sensed camera
+            if self.simulating_point_cloud: 
+                points = self.camera.step_sensing(robot=self._robot, cam_yaws=self.sim_cam_yaws)
+                if len(points) > self.max_num_depth_points: # if we have too many points, randomly sample
+                    randomly_sampled_indices = np.random.choice(points.shape[0], size=self.max_num_depth_points, replace=False)
+                    points = points[randomly_sampled_indices] 
+                elif len(points) < self.max_num_depth_points:# if we have too little points, randomly duplicate
+                    random_indices = np.random.choice(len(points), size=self.max_num_depth_points-len(points), replace=True)
+                    duplicated_points = points[random_indices]
+
+                    # Stack the duplicated points
+                    points = np.vstack((points, duplicated_points))
+                radius_column = np.full((points.shape[0], 1), self.point_cloud_radius)
+                current_obstacles_array = np.hstack((points, radius_column))
+                self.current_obstacles = np.array(current_obstacles_array).flatten()
+            
+            
+            
 
         # vector eef to goal
         eef_position = np.array(self._p.getLinkState(self._robot.robot_uid, self._robot.eef_uid)[BULLET_LINK_POSE_INDEX])
@@ -345,11 +387,6 @@ class RobotEnv(gym.Env):
 
 
     def step(self, action):
-        #update simulated depth camera and get the point cloud
-        points = self.camera.step_sensing(robot=self._robot, cam_yaws=self.sim_cam_yaws)
-        print(len(points))
-         
-        
         action = np.clip(action, self._action_space.low, self._action_space.high)
         action[np.isnan(action)] = 0.
         _reward = 0

@@ -30,7 +30,9 @@ config = {
     "waypoint_reaching": True,
     "dynamic_env": True,
     "monorail_vel": [0,0.8,0],
-    "sim_cam_yaws": [-pi/3],    
+    "simulating_point_cloud": True,
+    "sim_cam_yaws": [-pi/3, -pi/6, 0, pi/6],  
+    "point_cloud_radius": 0.01,
 }
 if config['waypoint_reaching']:
     goal = config['waypoints'][0]
