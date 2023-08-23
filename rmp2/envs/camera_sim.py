@@ -80,24 +80,23 @@ class Camera():
         plt.title("Point Cloud", fontsize=20)
         
     
-    def update_camera(self, robot, cam_yaw, cam_x_dist=0.1):
+    def update_camera(self, robot, cam_yaw, cam_pitch, cam_x_dist=0.1):
         # adapted from https://ai.aioz.io/guides/robotics/2021-05-19-visual-obs-pybullet/ 
         # finding position of the camera
-        #agent_pos, agent_orn = self.bullet_client.getBasePositionAndOrientation(robot.robot_uid)
+        base_pos, base_orn = self.bullet_client.getBasePositionAndOrientation(robot.robot_uid)
 
-        # set the camera at the end-effector link
-        end_effector_link_index = 9
+        # # set the camera at the end-effector link
+        # end_effector_link_index = 9
 
-        # Get the end-effector's position and orientation
-        eef_pos, eef_orient, _, _, _, _ = self.bullet_client.getLinkState(robot.robot_uid, end_effector_link_index)
-        yaw = cam_yaw #self.bullet_client.getEulerFromQuaternion(eef_orient)[-1] + cam_yaw #- pi/6
-        xA, yA, zA = eef_pos
+        # # Get the end-effector's position and orientation
+        # eef_pos, eef_orient, _, _, _, _ = self.bullet_client.getLinkState(robot.robot_uid, end_effector_link_index)
+        # yaw = cam_yaw #self.bullet_client.getEulerFromQuaternion(eef_orient)[-1] + cam_yaw #- pi/6
+        xA, yA, zA = base_pos
         xA = xA + cam_x_dist # make the camera a little further forward than the robot - stops it from being in frame
 
-        # compute focusing point of the camera
-        xB = xA + math.cos(yaw) * self.CAM_DISTANCE
-        yB = yA + math.sin(yaw) * self.CAM_DISTANCE
-        zB = zA
+        xB = xA + math.cos(cam_yaw) * math.cos(cam_pitch) * self.CAM_DISTANCE
+        yB = yA + math.sin(cam_yaw) * math.cos(cam_pitch) * self.CAM_DISTANCE
+        zB = zA + math.sin(cam_pitch) * self.CAM_DISTANCE
 
         view_matrix = self.bullet_client.computeViewMatrix(
                             cameraEyePosition=[xA, yA, zA],
@@ -106,7 +105,7 @@ class Camera():
                         )
 
         projection_matrix = self.bullet_client.computeProjectionMatrixFOV(
-                                fov=80, aspect=float(self.IMG_W/self.IMG_H), nearVal=0.005, farVal=200.0)
+                                fov=80, aspect=float(self.IMG_W/self.IMG_H), nearVal=0.1, farVal=1.0)
         #show where the camera is pointing
         line_ID = self.bullet_client.addUserDebugLine([xA, yA, zA], [xB, yB, zB], lineColorRGB=[0, 0, 1])
 
@@ -118,14 +117,14 @@ class Camera():
         
         return imgs, view_matrix, projection_matrix, line_ID
     
-    def step_sensing(self, robot, cam_yaws):
+    def step_sensing(self, robot, cam_yaws, cam_pitches):
         """
         Captures camera data in the current pybullet environment, plots the point cloud and returns points 
         representing the point cloud of the current environment. 
         """
         combined_points = []
         for i in range(len(cam_yaws)):
-            imgs_i, view_matrix_i, projection_matrix_i, line_ID_i = self.update_camera(robot, cam_yaw=cam_yaws[i])
+            imgs_i, view_matrix_i, projection_matrix_i, line_ID_i = self.update_camera(robot, cam_yaw=cam_yaws[i], cam_pitch = cam_pitches[i])
             points_i = self.get_point_cloud(im = imgs_i ,view_matrix=view_matrix_i, proj_matrix=projection_matrix_i)
             combined_points.append(points_i)
             self.bullet_client.removeUserDebugItem(line_ID_i) #removing the line which represents the current camera line of sight

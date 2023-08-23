@@ -75,6 +75,7 @@ DEFAULT_CONFIG = {
     #point cloud setup
     "simulating_point_cloud": False,
     "sim_cam_yaws": None,
+    "sim_cam_pitches": None,
     "point_cloud_radius": 0,
     "max_num_depth_points": 0,
     # pybullet gravity
@@ -142,6 +143,7 @@ class RobotEnv(gym.Env):
         # initialise the simulated camera and point cloud
         self.simulating_point_cloud = config["simulating_point_cloud"]
         self.sim_cam_yaws = config['sim_cam_yaws']
+        self.sim_cam_pitches = config['sim_cam_pitches']
         self.point_cloud_radius = config['point_cloud_radius']
         self.max_num_depth_points = config["max_num_depth_points"]
         
@@ -251,7 +253,7 @@ class RobotEnv(gym.Env):
             
             # override the current obstacles with the ones found from the sensed camera
             if self.simulating_point_cloud:
-                points = self.camera.step_sensing(robot=self._robot, cam_yaws=self.sim_cam_yaws)
+                points = self.camera.step_sensing(robot=self._robot, cam_yaws=self.sim_cam_yaws, cam_pitches=self.sim_cam_pitches)
                 radius_column = np.full((points.shape[0], 1), self.point_cloud_radius)
                 current_obstacles_array = np.hstack((points, radius_column))
                 self.current_obstacles = np.array(current_obstacles_array).flatten()
@@ -325,7 +327,7 @@ class RobotEnv(gym.Env):
                 
             # Update the current obstacles with the ones found from the sensed camera
             if self.simulating_point_cloud: 
-                points = self.camera.step_sensing(robot=self._robot, cam_yaws=self.sim_cam_yaws)
+                points = self.camera.step_sensing(robot=self._robot, cam_yaws=self.sim_cam_yaws, cam_pitches = self.sim_cam_pitches)
                 if len(points) > self.max_num_depth_points: # if we have too many points, randomly sample
                     randomly_sampled_indices = np.random.choice(points.shape[0], size=self.max_num_depth_points, replace=False)
                     points = points[randomly_sampled_indices] 
