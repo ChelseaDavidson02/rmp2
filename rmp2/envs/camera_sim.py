@@ -18,11 +18,11 @@ class Camera():
         self.ax = None
         self.figure = None
         self.bullet_client = bullet_client
+        self.scatter = None
     
         
     def get_point_cloud(self, im, view_matrix, proj_matrix):
-        # adapted from https://stackoverflow.com/questions/59128880/getting-world-coordinates-from-opengl-depth-buffer
-
+        # adapted from https://github.com/bulletphysics/bullet3/issues/1924
         # get a depth image
         # "infinite" depths will have a value close to 1
         depth = im[3]
@@ -52,11 +52,10 @@ class Camera():
 
     
     def plot_point_cloud_dynamic(self, points):
-        self.ax.cla() #clearing the plot ready for the next one
+        # Main functions found from https://stackoverflow.com/questions/5179589/continuous-3d-plotting-i-e-figure-update 
         x_coords, y_coords, z_coords = points[:, 0], points[:, 1], points[:, 2]
-        self.ax.scatter(x_coords, y_coords, z_coords, s=5)
-        plt.draw()
-        plt.pause(0.01) #TODO
+        self.scatter._offsets3d = (x_coords, y_coords, z_coords) # override the previous scatter plot
+        plt.pause(0.001) #TODO
         
     
     def setup_plot(self):
@@ -66,15 +65,18 @@ class Camera():
         self.figure = plt.figure()
         
         self.ax = self.figure.add_subplot(111, projection='3d')
+        self.scatter = self.ax.scatter([], [], [], s=15)
 
         self.ax.set_xlabel('X')
         self.ax.set_ylabel('Y')
         self.ax.set_zlabel('Z')
         
-        self.ax.axes.set_xlim3d(left=0, right=10) 
-        self.ax.axes.set_ylim3d(bottom=-10, top=10) 
-        self.ax.axes.set_zlim3d(bottom=0, top=10) 
-
+        # setting the original view
+        self.ax.view_init(0, 90)
+        
+        self.ax.axes.set_xlim3d(left=0, right=1) 
+        self.ax.axes.set_ylim3d(bottom=-0.5, top=0.5) 
+        self.ax.axes.set_zlim3d(bottom=0, top=0.5) 
 
         # setting title
         plt.title("Point Cloud", fontsize=20)
@@ -105,7 +107,7 @@ class Camera():
                         )
 
         projection_matrix = self.bullet_client.computeProjectionMatrixFOV(
-                                fov=80, aspect=float(self.IMG_W/self.IMG_H), nearVal=0.1, farVal=1.0)
+                                fov=60, aspect=float(self.IMG_W/self.IMG_H), nearVal=0.1, farVal=5.0)
         #show where the camera is pointing
         line_ID = self.bullet_client.addUserDebugLine([xA, yA, zA], [xB, yB, zB], lineColorRGB=[0, 0, 1])
 
@@ -115,7 +117,7 @@ class Camera():
                                 projection_matrix, shadow=True,
                                 renderer=self.bullet_client.ER_BULLET_HARDWARE_OPENGL)
         
-        return imgs, view_matrix, projection_matrix, line_ID
+        return imgs, view_matrix, projection_matrix
     
     def step_sensing(self, robot, cam_yaws, cam_pitches):
         """
@@ -124,16 +126,16 @@ class Camera():
         """
         combined_points = []
         for i in range(len(cam_yaws)):
-            imgs_i, view_matrix_i, projection_matrix_i, line_ID_i = self.update_camera(robot, cam_yaw=cam_yaws[i], cam_pitch = cam_pitches[i])
+            imgs_i, view_matrix_i, projection_matrix_i = self.update_camera(robot, cam_yaw=cam_yaws[i], cam_pitch = cam_pitches[i])
             points_i = self.get_point_cloud(im = imgs_i ,view_matrix=view_matrix_i, proj_matrix=projection_matrix_i)
             combined_points.append(points_i)
-            self.bullet_client.removeUserDebugItem(line_ID_i) #removing the line which represents the current camera line of sight
+            # self.bullet_client.removeUserDebugItem(line_ID_i) #removing the line which represents the current camera line of sight
         combined_points_stack = np.vstack(combined_points)
         unique_combined_points = np.unique(combined_points_stack, axis=0) # removing any points which were found in multiple camera angles
-        self.plot_point_cloud_dynamic(points=unique_combined_points)
         
         
         return unique_combined_points
+
         
         
     
