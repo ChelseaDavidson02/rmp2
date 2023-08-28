@@ -1,0 +1,86 @@
+<?xml version="1.0"?>
+
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+
+ <xacro:property name="ham_assem"	value="package://uqu08_ridgeback_description/meshes/HAM_Assem.STL" />
+ <xacro:property name="arm_plate"	value="package://uqu08_ridgeback_description/meshes/arm_platform.STL" />
+
+ <material name = "cpr_grey">
+   <color rgba = "0.2 0.2 0.2 1" />
+ </material>
+  <material name = "cpr_white">
+   <color rgba = "1 1 1 1" />
+ </material>
+ 
+  <!-- HAM Top Plate -->
+  <link name="ham_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${ham_assem}"/>
+      </geometry>
+      <material name="cpr_grey" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="${ham_assem}"/>
+      </geometry>
+    </collision>
+  </link>
+  
+  <joint name="ham_to_top" type="fixed">
+    <parent link="mid_mount" />
+    <child link="ham_link" />
+    <origin xyz="0 0 -0.007" rpy="1.57 0 -1.57"/>
+  </joint>
+  
+   
+  <!-- Arm Plate -->
+  <link name="arm_plate_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="${arm_plate}"/>
+      </geometry>
+      <material name="cpr_grey" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="${arm_plate}"/>
+      </geometry>
+    </collision>
+  </link>
+    
+  <joint name="adj_arm_plate" type="fixed">
+    <parent link="ham_link" />
+    <child link="arm_plate_link" />
+    <origin xyz="0 $(optenv FR3_PLATE_HEIGHT 0.56477) -0.10163" rpy="-1.57 0 0"/>
+  </joint>
+  
+  <!-- E-Stop -->
+  <link name="estop_collision_link">
+     <visual>
+      <material name="cpr_grey" />
+      <geometry>
+        <box size="0.090 0.120 0.090"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.090 0.120 0.090"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="estop_work_plate" type="fixed">
+    <parent link="ham_link"/>
+    <child link="estop_collision_link"/>
+    <origin xyz=".330 0.66 0.226"/>
+  </joint>
+  
+  <!-- Franka Research 3 -->
+  <xacro:include filename="$(find ridgeback_franka_description)/urdf/ridgeback_franka_description.urdf.xacro"/>
+
+</robot>
