@@ -254,10 +254,16 @@ class RobotEnv(gym.Env):
             # override the current obstacles with the ones found from the sensed camera
             if self.simulating_point_cloud:
                 points = self.camera.step_sensing(robot=self._robot, cam_yaws=self.sim_cam_yaws, cam_pitches=self.sim_cam_pitches)
+                # halve the number of points used
+                self.max_num_depth_points = math.ceil(0.5*len(points)) # want to halve number of points
+                print("Max depth points: ", self.max_num_depth_points)
+                randomly_sampled_indices = np.random.choice(points.shape[0], size=self.max_num_depth_points, replace=False)
+                points = points[randomly_sampled_indices] 
+                self.camera.plot_point_cloud_dynamic(points=points)
                 radius_column = np.full((points.shape[0], 1), self.point_cloud_radius)
                 current_obstacles_array = np.hstack((points, radius_column))
                 self.current_obstacles = np.array(current_obstacles_array).flatten()
-                self.max_num_depth_points = len(points)
+                
             
             self._p.stepSimulation()
 
@@ -337,6 +343,7 @@ class RobotEnv(gym.Env):
 
                     # Stack the duplicated points
                     points = np.vstack((points, duplicated_points))
+                self.camera.plot_point_cloud_dynamic(points=points)
                 radius_column = np.full((points.shape[0], 1), self.point_cloud_radius)
                 current_obstacles_array = np.hstack((points, radius_column))
                 self.current_obstacles = np.array(current_obstacles_array).flatten()
