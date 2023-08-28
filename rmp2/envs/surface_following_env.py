@@ -123,7 +123,8 @@ class FrankaEnvSF(RobotEnv):
         obstacle_uids = []
         
         # Adding big tunnel
-        obstacle_uids.append(add_obstacle_cylinder(self._p, [1.5,0,1.2], radius=1))
+        # obstacle_uids.append(add_obstacle_cylinder(self._p, [1.5,0,1.2], radius=1))
+        obstacle_uids.append(add_obstacle_cuboid(self._p, [1.6,0,0], [1, 20, 2]))
         
         # # TODO - this centre and radius value seen as centre, radius below, is hard coded
         # current_obstacles.append(np.append([1.5,0,1.2], 1))
