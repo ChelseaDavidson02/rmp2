@@ -132,7 +132,7 @@ class FrankaEnvSF(RobotEnv):
         # Adding cubes
         for i in range(30):
             # randomly scatter cubes along the tunnel wall
-            center = [random.uniform(0.5,0.6),random.uniform(-10, 10), random.uniform(0.5, 1.7)]
+            center = [random.uniform(0.5,0.6),random.uniform(-10, 10), random.uniform(0, 1.7)]
             s = random.uniform(0.05, 0.2) # half side length
             obstacle_uids.append(add_obstacle_cuboid(self._p, center, size=[s, s, s]))
             

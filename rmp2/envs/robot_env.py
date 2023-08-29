@@ -74,8 +74,8 @@ DEFAULT_CONFIG = {
     "cam_position": [0, 0, 0],
     #point cloud setup
     "simulating_point_cloud": False,
-    "sim_cam_yaws": None,
-    "sim_cam_pitches": None,
+    "sim_cam_yaw": None,
+    "sim_cam_pitch": None,
     "point_cloud_radius": 0,
     "max_num_depth_points": 0,
     # pybullet gravity
@@ -142,14 +142,13 @@ class RobotEnv(gym.Env):
             
         # initialise the simulated camera and point cloud
         self.simulating_point_cloud = config["simulating_point_cloud"]
-        self.sim_cam_yaws = config['sim_cam_yaws']
-        self.sim_cam_pitches = config['sim_cam_pitches']
+        self.sim_cam_yaw = config['sim_cam_yaw']
+        self.sim_cam_pitch = config['sim_cam_pitch']
         self.point_cloud_radius = config['point_cloud_radius']
         self.max_num_depth_points = config["max_num_depth_points"]
         
         if self.simulating_point_cloud:
             self.camera = Camera(self._p)
-            self.camera.setup_plot()
         
         # create the robot in pybullet
         self._robot = robot_sim.create_robot_sim(self.robot_name, self._p, self._time_step)
@@ -253,7 +252,8 @@ class RobotEnv(gym.Env):
             
             # override the current obstacles with the ones found from the sensed camera
             if self.simulating_point_cloud:
-                points = self.camera.step_sensing(robot=self._robot, cam_yaws=self.sim_cam_yaws, cam_pitches=self.sim_cam_pitches)
+                self.camera.setup_pointcloud(robot=self._robot, cam_yaw=self.sim_cam_yaw, cam_pitch=self.sim_cam_pitch)
+                points = self.camera.step_sensing()
                 # halve the number of points used
                 self.max_num_depth_points = math.ceil(0.5*len(points)) # want to halve number of points
                 print("Max depth points: ", self.max_num_depth_points)
@@ -333,7 +333,7 @@ class RobotEnv(gym.Env):
                 
             # Update the current obstacles with the ones found from the sensed camera
             if self.simulating_point_cloud: 
-                points = self.camera.step_sensing(robot=self._robot, cam_yaws=self.sim_cam_yaws, cam_pitches = self.sim_cam_pitches)
+                points = self.camera.step_sensing()
                 if len(points) > self.max_num_depth_points: # if we have too many points, randomly sample
                     randomly_sampled_indices = np.random.choice(points.shape[0], size=self.max_num_depth_points, replace=False)
                     points = points[randomly_sampled_indices] 

@@ -31,8 +31,8 @@ config = {
     "dynamic_env": True,
     "monorail_vel": [0,0.8,0],
     "simulating_point_cloud": True,
-    "sim_cam_yaws": [-pi/8],
-    "sim_cam_pitches": [pi/8],  
+    "sim_cam_yaw": -pi/8,
+    "sim_cam_pitch": pi/8,  
     "point_cloud_radius": 0.01,
 }
 if config['waypoint_reaching']:
