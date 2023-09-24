@@ -1,0 +1,24 @@
+
+camera_name: 'pybullet_sim_cam'
+
+intrinsic_params:
+    img_width: 320
+    img_height: 240
+    fx: None
+    fy: None
+    cx: None
+    cy: None
+    fov: 60 # fov_x
+    nearVal: 0.01
+    farVal: 4.0
+
+extrinsic_params:
+    dist_x: 0
+    dist_y: 0
+    dist_z: 0
+    pitch: 0.39269908169
+    yaw: -0.39269908169
+    roll: 0 # Currently roll is not supported (don't want camera rotated) 
+    cam_dist: 100000
+
+    

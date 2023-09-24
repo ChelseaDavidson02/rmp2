@@ -250,21 +250,20 @@ class RobotEnv(gym.Env):
             self.current_goal, self.goal_uid = self._generate_random_goal()
             self.current_obstacles, self.obstacle_uids = self._generate_random_obstacles()
             
-            # override the current obstacles with the ones found from the sensed camera
+            # set the current obstacles to be a sphere parameterisation of the environment found with the camera
             if self.simulating_point_cloud:
-                self.camera.setup_pointcloud(robot=self._robot, cam_yaw=self.sim_cam_yaw, cam_pitch=self.sim_cam_pitch)
-                points = self.camera.step_sensing()
-                # halve the number of points used
-                self.max_num_depth_points = math.ceil(0.5*len(points)) # want to halve number of points
+                self.camera.setup_point_cloud(robot=self._robot)
+                points = self.camera.step_sensing(voxel_size=self.point_cloud_radius*2)
+                
+                # set the number of points to be used to represent the environment at each time step - must stay the same each sim step for the RMP tree
+                self.max_num_depth_points = len(points) 
                 print("Max depth points: ", self.max_num_depth_points)
-                randomly_sampled_indices = np.random.choice(points.shape[0], size=self.max_num_depth_points, replace=False)
-                points = points[randomly_sampled_indices] 
+                
                 self.camera.plot_point_cloud_dynamic(points=points)
                 radius_column = np.full((points.shape[0], 1), self.point_cloud_radius)
                 current_obstacles_array = np.hstack((points, radius_column))
                 self.current_obstacles = np.array(current_obstacles_array).flatten()
                 
-            
             self._p.stepSimulation()
 
             # check if the initial configuration is valid
@@ -311,20 +310,7 @@ class RobotEnv(gym.Env):
             # Calculate velocity at each timestep
             velocity=np.array(self.monorail_vel)
             velocity_per_step = velocity * self._time_step
-            
-            # Change velocity dimensions so they can be added to the current_obstacle array
-            # velocity_to_add = np.tile(np.append(velocity_per_step,[0]),len(self.obstacle_uids))
-            
-            # Update position of each obstacle
-            # self.current_obstacles=np.add(self.current_obstacles, velocity_to_add)
-            
-            # # Update simulation with new obstacle position
-            # for i in range(len(self.obstacle_uids)):  
-            #     obstacle_indx = i*(self.workspace_dim + 1)  # current_obstacles is an array with Position(xyz) + radius for each obstacle
-            #     currentPos, currentOrient = self._p.getBasePositionAndOrientation(self.obstacle_uids[i])
-            #     new_position = self.current_obstacles[obstacle_indx : obstacle_indx+self.workspace_dim] # use new calculated position to update sim
-            #     self._p.resetBasePositionAndOrientation(self.obstacle_uids[i], new_position, currentOrient)
-                        
+                      
             # Update simulation with new obstacle position
             for i in range(len(self.obstacle_uids)):  
                 currentPos, currentOrient = self._p.getBasePositionAndOrientation(self.obstacle_uids[i])
@@ -333,7 +319,7 @@ class RobotEnv(gym.Env):
                 
             # Update the current obstacles with the ones found from the sensed camera
             if self.simulating_point_cloud: 
-                points = self.camera.step_sensing()
+                points = self.camera.step_sensing(voxel_size=self.point_cloud_radius*2)
                 if len(points) > self.max_num_depth_points: # if we have too many points, randomly sample
                     randomly_sampled_indices = np.random.choice(points.shape[0], size=self.max_num_depth_points, replace=False)
                     points = points[randomly_sampled_indices] 
@@ -347,8 +333,6 @@ class RobotEnv(gym.Env):
                 radius_column = np.full((points.shape[0], 1), self.point_cloud_radius)
                 current_obstacles_array = np.hstack((points, radius_column))
                 self.current_obstacles = np.array(current_obstacles_array).flatten()
-            
-            
             
 
         # vector eef to goal

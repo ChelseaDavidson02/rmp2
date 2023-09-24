@@ -33,7 +33,7 @@ config = {
     "simulating_point_cloud": True,
     "sim_cam_yaw": -pi/8,
     "sim_cam_pitch": pi/8,  
-    "point_cloud_radius": 0.01,
+    "point_cloud_radius": 0.025,
 }
 if config['waypoint_reaching']:
     goal = config['waypoints'][0]
