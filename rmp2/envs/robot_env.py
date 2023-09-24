@@ -259,7 +259,10 @@ class RobotEnv(gym.Env):
                 self.max_num_depth_points = len(points) 
                 print("Max depth points: ", self.max_num_depth_points)
                 
-                self.camera.plot_point_cloud_dynamic(points=points)
+                eef_info = p.getLinkState(self._robot.robot_uid, self._robot.eef_uid, computeLinkVelocity=1, computeForwardKinematics=1)
+                closest_point = self.camera.get_goal_point(points=points, eef_pos=eef_info[0], distance=0.1)
+                self.camera.plot_point_cloud_dynamic(points, closest_point=closest_point)
+                
                 radius_column = np.full((points.shape[0], 1), self.point_cloud_radius)
                 current_obstacles_array = np.hstack((points, radius_column))
                 self.current_obstacles = np.array(current_obstacles_array).flatten()
@@ -329,7 +332,10 @@ class RobotEnv(gym.Env):
 
                     # Stack the duplicated points
                     points = np.vstack((points, duplicated_points))
-                self.camera.plot_point_cloud_dynamic(points=points)
+                eef_info = p.getLinkState(self._robot.robot_uid, self._robot.eef_uid, computeLinkVelocity=1, computeForwardKinematics=1)
+                closest_point = self.camera.get_goal_point(points=points, eef_pos=eef_info[0], distance=0.1)
+                self.camera.plot_point_cloud_dynamic(points, closest_point=closest_point)
+                
                 radius_column = np.full((points.shape[0], 1), self.point_cloud_radius)
                 current_obstacles_array = np.hstack((points, radius_column))
                 self.current_obstacles = np.array(current_obstacles_array).flatten()

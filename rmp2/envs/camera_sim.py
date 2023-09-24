@@ -12,6 +12,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import yaml
 from sklearn.neighbors import KDTree
+from scipy.spatial import cKDTree
+
 
 
 
@@ -164,7 +166,8 @@ class Camera():
         # matplotlib variables
         self.ax = None
         self.figure = None
-        self.scatter = None
+        self.scatter1 = None
+        self.scatter2 = None
     
     def setup_point_cloud(self, robot):
         """
@@ -177,7 +180,9 @@ class Camera():
         self.figure = plt.figure()
         
         self.ax = self.figure.add_subplot(111, projection='3d')
-        self.scatter = self.ax.scatter([], [], [], s=36)
+        self.scatter1 = self.ax.scatter([], [], [], s=36)
+        self.scatter2 = self.ax.scatter([], [], [],  c='r', marker='o', s=50, label='Specific Point')
+
 
         self.ax.set_xlabel('X')
         self.ax.set_ylabel('Y')
@@ -199,7 +204,7 @@ class Camera():
         self.projection_matrix = self.cam_intrinsic.get_projection_matrix()
     
         
-    def step_sensing(self, voxel_size=0.05):
+    def step_sensing(self, voxel_size=0.03):
         """
         Captures camera data in the current pybullet environment, plots the point cloud and returns points 
         representing the point cloud of the current environment. 
@@ -259,32 +264,58 @@ class Camera():
         # Do voxel downsampling - equations recieved from chatGPT - "I have a set of 21,000 points representing a point cloud as an numpy array in python and I want to apply voxel downsampling on these. How do I do that?"
         # print("OG size", len(points))
 
-        # Calculate the minimum and maximum bounds of your point cloud
-        min_bound = np.min(points, axis=0)
-        max_bound = np.max(points, axis=0)
+        grid_indices = (points / voxel_size).astype(int)
 
-        # Calculate voxel indices for each point
-        voxel_indices = ((points - min_bound) / voxel_size).astype(int)
+        # Combine grid indices into a single unique identifier for each voxel
+        voxel_ids = grid_indices[:, 0] + grid_indices[:, 1] * 1000 + grid_indices[:, 2] * 1000000
 
-        # Create a KD-Tree from the original point cloud
-        kdtree = KDTree(points)
+        # Sort points based on voxel IDs
+        sorted_indices = np.argsort(voxel_ids)
 
-        # Hash the voxel indices to identify unique voxels
-        voxel_hash = voxel_indices[:, 0] + voxel_indices[:, 1] * (max_bound[0] / voxel_size) + voxel_indices[:, 2] * (max_bound[0] / voxel_size) * (max_bound[1] / voxel_size)
+        # Group points by voxel IDs
+        voxel_groups = np.split(points[sorted_indices], np.where(np.diff(voxel_ids[sorted_indices]))[0] + 1)
 
-        # Use unique voxel hashes to select one point per voxel
-        unique_voxel_hashes, downsampled_indices = np.unique(voxel_hash, return_index=True)
+        # Calculate the centroid of each voxel
+        centroids = np.array([group.mean(axis=0) for group in voxel_groups])
 
-        # Get the downsampled point cloud
-        downsampled_point_cloud = points[downsampled_indices]
+        return centroids
         
-        return downsampled_point_cloud
-
     
-    def plot_point_cloud_dynamic(self, points):
+    def plot_point_cloud_dynamic(self, points, closest_point):
         """
         Updates the plot with the given points.
         """
         x_coords, y_coords, z_coords = points[:, 0], points[:, 1], points[:, 2]
-        self.scatter._offsets3d = (x_coords, y_coords, z_coords)
+        self.scatter1._offsets3d = (x_coords, y_coords, z_coords)
+        
+        x_cp, y_cp, z_cp = closest_point[0], closest_point[1], closest_point[2]
+        self.scatter2._offsets3d = (np.array([x_cp]), np.array([y_cp]), np.array([z_cp]))
+
         plt.pause(0.001) #TODO
+        
+    def get_goal_point(self, points, eef_pos, distance):
+        # Create a kd-tree from your point cloud data
+        kdtree = cKDTree(points)
+        eef_location = np.array(eef_pos)
+        
+        # Query the kd-tree to find the index of the closest point
+        closest_point_index = kdtree.query(eef_location)[1]
+        
+        # Get the actual coordinates of the closest point
+        closest_point = points[closest_point_index]
+        
+        # Calculate the vector between the two points - this goes from object towards eef
+        vector = closest_point - eef_location
+
+        # Calculate the length (magnitude) of the vector
+        vector_length = np.linalg.norm(vector)
+
+        # Calculate the unit vector by dividing the vector by its length
+        unit_vector = vector / vector_length
+        
+        goal_point = closest_point - (unit_vector*distance)
+        
+        goal_line_ID = p.addUserDebugLine(eef_pos, closest_point, lineColorRGB=[1, 0, 0])
+        
+        # calculate the point
+        return goal_point
