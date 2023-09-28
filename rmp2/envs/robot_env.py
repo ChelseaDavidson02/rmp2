@@ -78,6 +78,7 @@ DEFAULT_CONFIG = {
     "sim_cam_pitch": None,
     "point_cloud_radius": 0,
     "max_num_depth_points": 0,
+    "goal_distance_from_surface": 0.0,
     # pybullet gravity
     "gravity": -9.8,
     # acceleration control mode
@@ -146,6 +147,7 @@ class RobotEnv(gym.Env):
         self.sim_cam_pitch = config['sim_cam_pitch']
         self.point_cloud_radius = config['point_cloud_radius']
         self.max_num_depth_points = config["max_num_depth_points"]
+        self.goal_distance_from_surface = config["goal_distance_from_surface"]
         
         if self.simulating_point_cloud:
             self.camera = Camera(self._p)
@@ -252,17 +254,25 @@ class RobotEnv(gym.Env):
             
             # set the current obstacles to be a sphere parameterisation of the environment found with the camera
             if self.simulating_point_cloud:
-                self.camera.setup_point_cloud(robot=self._robot)
+                self.camera.setup_point_cloud(robot=self._robot, goal_uid=self.goal_uid)
                 points = self.camera.step_sensing(voxel_size=self.point_cloud_radius*2)
                 
                 # set the number of points to be used to represent the environment at each time step - must stay the same each sim step for the RMP tree
                 self.max_num_depth_points = len(points) 
                 print("Max depth points: ", self.max_num_depth_points)
                 
+                # Find goal position
                 eef_info = p.getLinkState(self._robot.robot_uid, self._robot.eef_uid, computeLinkVelocity=1, computeForwardKinematics=1)
-                closest_point = self.camera.get_goal_point(points=points, eef_pos=eef_info[0], distance=0.1)
-                self.camera.plot_point_cloud_dynamic(points, closest_point=closest_point)
+                goal_point = self.camera.get_goal_point(points=points, eef_pos=eef_info[0], distance=self.goal_distance_from_surface)
+                self.camera.plot_point_cloud_dynamic(points, closest_point=goal_point)
                 
+                # Updating goal
+                self.current_goal = goal_point # Move goal to set distance from current closest obstacle
+                # Update simulation with new goal position
+                new_orientation = self._p.getQuaternionFromEuler([0, 0, 0])
+                self._p.resetBasePositionAndOrientation(self.goal_uid, self.current_goal, new_orientation)
+                
+                # Updating obstacles
                 radius_column = np.full((points.shape[0], 1), self.point_cloud_radius)
                 current_obstacles_array = np.hstack((points, radius_column))
                 self.current_obstacles = np.array(current_obstacles_array).flatten()
@@ -333,9 +343,16 @@ class RobotEnv(gym.Env):
                     # Stack the duplicated points
                     points = np.vstack((points, duplicated_points))
                 eef_info = p.getLinkState(self._robot.robot_uid, self._robot.eef_uid, computeLinkVelocity=1, computeForwardKinematics=1)
-                closest_point = self.camera.get_goal_point(points=points, eef_pos=eef_info[0], distance=0.1)
-                self.camera.plot_point_cloud_dynamic(points, closest_point=closest_point)
+                goal_point = self.camera.get_goal_point(points=points, eef_pos=eef_info[0], distance=self.goal_distance_from_surface)
+                self.camera.plot_point_cloud_dynamic(points, closest_point=goal_point)
                 
+                # Updating goal
+                self.current_goal = goal_point # Move goal to set distance from current closest obstacle
+                # Update simulation with new goal position
+                new_orientation = self._p.getQuaternionFromEuler([0, 0, 0])
+                self._p.resetBasePositionAndOrientation(self.goal_uid, self.current_goal, new_orientation)
+                
+                # updating obstacles
                 radius_column = np.full((points.shape[0], 1), self.point_cloud_radius)
                 current_obstacles_array = np.hstack((points, radius_column))
                 self.current_obstacles = np.array(current_obstacles_array).flatten()
@@ -449,7 +466,7 @@ class RobotEnv(gym.Env):
         if (self.terminated or self._env_step_counter > self._horizon):
             self._observation = self.get_extended_observation()
             self.terminated = True
-            print("Time ran out")
+            print("Time ran through")
             return True
         
         # check collision only if terminates after collision
@@ -462,14 +479,15 @@ class RobotEnv(gym.Env):
             self.terminated = True
             return True
         
-        # Check if it has reached the goal
-        eef_position = np.array(self._p.getLinkState(self._robot.robot_uid, self._robot.eef_uid)[BULLET_LINK_POSE_INDEX])
-        distance_to_goal = np.linalg.norm(eef_position[:self.workspace_dim] - self.current_goal[:self.workspace_dim])
-        #print(distance_to_goal)
-        if distance_to_goal < 0.0025:
-            print("Reached goal yay")
-            self.terminated = True
-            return True
+        # # Check if it has reached the goal
+        # eef_position = np.array(self._p.getLinkState(self._robot.robot_uid, self._robot.eef_uid)[BULLET_LINK_POSE_INDEX])
+        # distance_to_goal = np.linalg.norm(eef_position[:self.workspace_dim] - self.current_goal[:self.workspace_dim])
+        # #print(distance_to_goal)
+        
+        # if distance_to_goal < 0.0025:
+        #     print("Reached goal yay")
+        #     self.terminated = True
+        #     return True
         
         return False
 

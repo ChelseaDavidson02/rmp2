@@ -169,13 +169,16 @@ class Camera():
         self.scatter1 = None
         self.scatter2 = None
         self.robot = None
+        self.goal_uid = None
+        self.goal_line_ID = None
     
-    def setup_point_cloud(self, robot):
+    def setup_point_cloud(self, robot, goal_uid):
         """
         Sets up the plot used to display the point cloud
         """
         # Store which robot is in the sim
         self.robot = robot
+        self.goal_uid = goal_uid
         
         plt.close('all')
         # to run GUI event loop
@@ -257,8 +260,9 @@ class Camera():
         x, y, z = x.reshape(-1), y.reshape(-1), depth_image.reshape(-1)
         segmentation_mask = segmentation_mask.reshape(-1) # reshape the segmentation mask
 
-        # Filter out "infinite" depths and pixels belonging to the robot (segmentation_mask == robot_uid when the pixels correspond to the robot)
-        valid_pixels = np.logical_and(z < 1.00, segmentation_mask != self.robot.robot_uid)
+        # Filter out "infinite" depths and pixels belonging to the robot or goal sphere (segmentation_mask == robot_uid when the pixels correspond to the robot)
+        pixels_w_obs_only = np.logical_and(segmentation_mask != self.goal_uid, segmentation_mask != self.robot.robot_uid)
+        valid_pixels = np.logical_and(pixels_w_obs_only, z < 1.00)
         x, y, z = x[valid_pixels], y[valid_pixels], z[valid_pixels]
         h = np.ones_like(z)
 
@@ -304,6 +308,11 @@ class Camera():
         plt.pause(0.001) #TODO
         
     def get_goal_point(self, points, eef_pos, distance):
+        # Remove previous line ID of goal
+        
+        if self.goal_line_ID is not None:
+            self.bullet_client.removeUserDebugItem(self.goal_line_ID)
+            
         # Create a kd-tree from your point cloud data
         kdtree = cKDTree(points)
         eef_location = np.array(eef_pos)
@@ -325,7 +334,7 @@ class Camera():
         
         goal_point = closest_point - (unit_vector*distance)
         
-        goal_line_ID = p.addUserDebugLine(eef_pos, closest_point, lineColorRGB=[1, 0, 0])
+        self.goal_line_ID = p.addUserDebugLine(eef_pos, closest_point, lineColorRGB=[1, 0, 0])
         
         # calculate the point
         return goal_point
