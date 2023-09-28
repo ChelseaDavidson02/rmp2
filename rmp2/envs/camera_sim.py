@@ -211,14 +211,16 @@ class Camera():
         self.projection_matrix = self.cam_intrinsic.get_projection_matrix()
     
         
-    def step_sensing(self, voxel_size=0.03):
+    def step_sensing(self, eef_pos, distance, voxel_size):
         """
         Captures camera data in the current pybullet environment, plots the point cloud and returns points 
         representing the point cloud of the current environment. 
         """
         imgs = self.update_camera()
-        points = self.get_point_cloud(imgs, voxel_size)
-        return points
+        all_points = self.get_point_cloud(imgs)
+        downsampled_points = self.downsample_point_cloud(all_points, voxel_size)
+        goal_position = self.get_goal_point(all_points, eef_pos, distance)
+        return downsampled_points, goal_position
     
     def update_camera(self):
         """
@@ -235,7 +237,7 @@ class Camera():
         return imgs
     
         
-    def get_point_cloud(self, im, voxel_size):
+    def get_point_cloud(self, im):
         """
         Uses the depth image from the given images to return a set of points in a point cloud. 
         Uses voxel downsampling to reduce the number of points in the point cloud.
@@ -274,7 +276,9 @@ class Camera():
         points /= points[:, 3:4]
         points = points[:, :3]
         
-        
+        return points
+    
+    def downsample_point_cloud(self, points, voxel_size):
         # Do voxel downsampling - equations recieved from chatGPT - "I have a set of 21,000 points representing a point cloud as an numpy array in python and I want to apply voxel downsampling on these. How do I do that?"
         # print("OG size", len(points))
 
