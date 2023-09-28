@@ -168,11 +168,15 @@ class Camera():
         self.figure = None
         self.scatter1 = None
         self.scatter2 = None
+        self.robot = None
     
     def setup_point_cloud(self, robot):
         """
         Sets up the plot used to display the point cloud
         """
+        # Store which robot is in the sim
+        self.robot = robot
+        
         plt.close('all')
         # to run GUI event loop
         plt.ion()
@@ -237,27 +241,33 @@ class Camera():
         """
         # get a depth image
         # "infinite" depths will have a value close to 1
-        depth = im[3]
+        depth_image = im[3]
+        
+        # get a segmentation mask image
+        segmentation_mask = im[4]
 
-        # create a 4x4 transform matrix that goes from pixel coordinates (and depth values) to world coordinates
+        # Create a 4x4 transform matrix that goes from pixel coordinates (and depth values) to world coordinates
         proj_matrix = np.asarray(self.projection_matrix).reshape([4, 4], order="F")
         view_matrix = np.asarray(self.view_matrix).reshape([4, 4], order="F")
         tran_pix_world = np.linalg.inv(np.matmul(proj_matrix, view_matrix))
 
-        # create a grid with pixel coordinates and depth values
+        # Create a grid with pixel coordinates, depth values, and segmentation mask values
         y, x = np.mgrid[-1:1:2 / self.cam_intrinsic.height, -1:1:2 / self.cam_intrinsic.width]
         y *= -1.
-        x, y, z = x.reshape(-1), y.reshape(-1), depth.reshape(-1)
+        x, y, z = x.reshape(-1), y.reshape(-1), depth_image.reshape(-1)
+        segmentation_mask = segmentation_mask.reshape(-1) # reshape the segmentation mask
+
+        # Filter out "infinite" depths and pixels belonging to the robot (segmentation_mask == robot_uid when the pixels correspond to the robot)
+        valid_pixels = np.logical_and(z < 1.00, segmentation_mask != self.robot.robot_uid)
+        x, y, z = x[valid_pixels], y[valid_pixels], z[valid_pixels]
         h = np.ones_like(z)
 
         pixels = np.stack([x, y, z, h], axis=1)
-        # filter out "infinite" depths
-        pixels = pixels[z < 1.00]
         pixels[:, 2] = 2 * pixels[:, 2] - 1
 
-        # turn pixels to world coordinates
+        # Transform pixels to world coordinates
         points = np.matmul(tran_pix_world, pixels.T).T
-        points /= points[:, 3: 4]
+        points /= points[:, 3:4]
         points = points[:, :3]
         
         
