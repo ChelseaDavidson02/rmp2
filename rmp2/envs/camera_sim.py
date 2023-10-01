@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import yaml
 from sklearn.neighbors import KDTree
 from scipy.spatial import cKDTree
+import time
 
 
 
@@ -168,9 +169,14 @@ class Camera():
         self.figure = None
         self.scatter1 = None
         self.scatter2 = None
+        
+        # pybullet sim variables
         self.robot = None
         self.goal_uid = None
         self.goal_line_ID = None
+        self.ideal_pose = None
+        self.iteration = 0
+        
     
     def setup_point_cloud(self, robot, goal_uid):
         """
@@ -188,7 +194,7 @@ class Camera():
         
         self.ax = self.figure.add_subplot(111, projection='3d')
         self.scatter1 = self.ax.scatter([], [], [], s=36)
-        self.scatter2 = self.ax.scatter([], [], [],  c='r', marker='o', s=50, label='Specific Point')
+        self.scatter2 = self.ax.scatter([], [], [],  c='g', marker='o', s=50, label='Specific Point')
 
 
         self.ax.set_xlabel('X')
@@ -199,7 +205,7 @@ class Camera():
         
         self.ax.axes.set_xlim3d(left=0, right=1.2) 
         self.ax.axes.set_ylim3d(bottom=-0.5, top=0.5) 
-        self.ax.axes.set_zlim3d(bottom=0, top=0.5) 
+        self.ax.axes.set_zlim3d(bottom=0, top=1.0) 
 
         # setting title
         plt.title("Point Cloud", fontsize=20)
@@ -216,10 +222,24 @@ class Camera():
         Captures camera data in the current pybullet environment, plots the point cloud and returns points 
         representing the point cloud of the current environment. 
         """
+        t0 = time.time()
+        self.bullet_client.changeVisualShape(self.goal_uid, -1, rgbaColor=[0, 0, 0, 0])
         imgs = self.update_camera()
+        t1 = time.time()
+        self.bullet_client.changeVisualShape(self.goal_uid, -1, rgbaColor=[0, 1, 0, 1])
         all_points = self.get_point_cloud(imgs)
-        downsampled_points = self.downsample_point_cloud(all_points, voxel_size)
-        goal_position = self.get_goal_point(all_points, eef_pos, distance)
+        points = self.restrict_ROI(all_points)
+        t2 = time.time()
+        downsampled_points = self.downsample_point_cloud(points, voxel_size)
+        t3 = time.time()
+        goal_position = self.get_goal_point(points, eef_pos, distance)
+        t4 = time.time()
+        
+        print("Time taken updating the camera: ", t1-t0)
+        print("Time taken getting point cloud: ", t2-t1)
+        print("Time taken downsampling: ", t3-t2)
+        print("Time taken getting goal point: ", t4-t3)
+        print("Total time: ", t4-t1)
         return downsampled_points, goal_position
     
     def update_camera(self):
@@ -263,8 +283,9 @@ class Camera():
         segmentation_mask = segmentation_mask.reshape(-1) # reshape the segmentation mask
 
         # Filter out "infinite" depths and pixels belonging to the robot or goal sphere (segmentation_mask == robot_uid when the pixels correspond to the robot)
-        pixels_w_obs_only = np.logical_and(segmentation_mask != self.goal_uid, segmentation_mask != self.robot.robot_uid)
-        valid_pixels = np.logical_and(pixels_w_obs_only, z < 1.00)
+        # pixels_w_obs_only = np.logical_and(segmentation_mask != self.goal_uid, segmentation_mask != self.robot.robot_uid)
+        # valid_pixels = np.logical_and(pixels_w_obs_only, z < 1.00)
+        valid_pixels = np.logical_and(z < 1.00, segmentation_mask != self.robot.robot_uid)
         x, y, z = x[valid_pixels], y[valid_pixels], z[valid_pixels]
         h = np.ones_like(z)
 
@@ -277,6 +298,24 @@ class Camera():
         points = points[:, :3]
         
         return points
+    
+    def restrict_ROI(self, point_cloud, max_x_distance = 1.0, max_y_distance = 0.5, max_z_distance = 1.1):
+        x_coordinates = point_cloud[:, 0]
+        y_coordinates = point_cloud[:, 1]
+        z_coordinates = point_cloud[:, 2]
+
+        # Create boolean masks for each dimension
+        x_mask = np.abs(x_coordinates) <= max_x_distance
+        y_mask = np.abs(y_coordinates) <= max_y_distance
+        z_mask = np.abs(z_coordinates) <= max_z_distance
+        
+        # Combine the masks using logical AND to get the final mask
+        mask = x_mask & y_mask & z_mask
+
+        # Apply the final mask to filter the points
+        restricted_point_cloud = point_cloud[mask]
+        
+        return restricted_point_cloud
     
     def downsample_point_cloud(self, points, voxel_size):
         # Do voxel downsampling - equations recieved from chatGPT - "I have a set of 21,000 points representing a point cloud as an numpy array in python and I want to apply voxel downsampling on these. How do I do that?"
@@ -303,6 +342,7 @@ class Camera():
         """
         Updates the plot with the given points.
         """
+        t0 = time.time()
         x_coords, y_coords, z_coords = points[:, 0], points[:, 1], points[:, 2]
         self.scatter1._offsets3d = (x_coords, y_coords, z_coords)
         
@@ -310,6 +350,8 @@ class Camera():
         self.scatter2._offsets3d = (np.array([x_cp]), np.array([y_cp]), np.array([z_cp]))
 
         plt.pause(0.001) #TODO
+        t1 = time.time()
+        print("Time taken plotting: ", t1-t0)
         
     def get_goal_point(self, points, eef_pos, distance):
         # Remove previous line ID of goal
@@ -320,6 +362,9 @@ class Camera():
         # Create a kd-tree from your point cloud data
         kdtree = cKDTree(points)
         eef_location = np.array(eef_pos)
+        
+        # bias = np.array([0,-0.05, 0])
+        # biased_eef_location = np.add(eef_location, bias)
         
         # Query the kd-tree to find the index of the closest point
         closest_point_index = kdtree.query(eef_location)[1]
@@ -338,7 +383,21 @@ class Camera():
         
         goal_point = closest_point - (unit_vector*distance)
         
-        self.goal_line_ID = p.addUserDebugLine(eef_pos, closest_point, lineColorRGB=[1, 0, 0])
+        self.goal_line_ID = p.addUserDebugLine(eef_pos, closest_point, lineColorRGB=[0, 1, 0])
+        
+        if self.ideal_pose is None:
+            self.ideal_pose = goal_point
+        
+        # If the robot is keeping a constant distance along a flat surface, move the goal to its original position
+        # upper_bound_y = closest_point[1] + 0.01
+        # lower_bound_y = closest_point[1] - 0.01
+        
+        # upper_bound_x = closest_point[0] + 0.01
+        # lower_bound_x = closest_point[0] - 0.01
+        
+        # if goal_point[1] < upper_bound_y and goal_point[1] > lower_bound_y and self.ideal_pose[0] < upper_bound_x and self.ideal_pose[0] > lower_bound_x:
+        #     goal_point = self.ideal_pose
         
         # calculate the point
         return goal_point
+        # return self.ideal_pose

@@ -25,7 +25,7 @@ def add_collision_goal(bullet_client, position, radius=0.05, color=[0.0, 1.0, 0.
     return goal
 
 
-def add_obstacle_ball(bullet_client, center, radius=0.1, color=[0.4, 0.4, 0.4, 1]):
+def add_obstacle_ball(bullet_client, center, radius=0.1, color=[0.8, 0.4, 0.8, 1]): # NOTE 0.4, 0.4, 0.4 is grey
     collision = bullet_client.createCollisionShape(bullet_client.GEOM_SPHERE, radius=radius)
     visual = bullet_client.createVisualShape(bullet_client.GEOM_SPHERE, radius=radius,
                                              rgbaColor=color)
@@ -36,7 +36,7 @@ def add_obstacle_ball(bullet_client, center, radius=0.1, color=[0.4, 0.4, 0.4, 1
     return obstacle
 
 
-def add_obstacle_cylinder(bullet_client, center, radius=1, length=20, color=[0.4, 0.4, 0.4, 1]):
+def add_obstacle_cylinder(bullet_client, center, radius=1, length=20, color=[0.8, 0.4, 0.8, 1]):
     collision = bullet_client.createCollisionShape(bullet_client.GEOM_CYLINDER, radius=radius, height=length,
                                                 flags=bullet_client.GEOM_FORCE_CONCAVE_TRIMESH)
     visual = bullet_client.createVisualShape(bullet_client.GEOM_CYLINDER, radius=radius, length=length,

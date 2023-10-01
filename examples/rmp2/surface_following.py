@@ -32,8 +32,8 @@ config = {
     "monorail_vel": [0,0.9,0],
     "simulating_point_cloud": True,
     "plotting_point_cloud": True,
-    "point_cloud_radius": 0.015,
-    "goal_distance_from_surface": 0.3,
+    "point_cloud_radius": 0.02,
+    "goal_distance_from_surface": 0.2,
 }
 if config['waypoint_reaching']:
     goal = config['waypoints'][0]

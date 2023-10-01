@@ -17,10 +17,10 @@ DEFAULT_CONFIG = {
     "goal_torus_minor_radius": 0.3,
     "goal_torus_height": 0.5,
     # parameters for randomly generated obstacles
-    "obs_torus_angle_center": np.pi, # 0.
-    "obs_torus_angle_range": 2*np.pi,# np.pi
-    "obs_torus_major_radius": 1, # 0.5
-    "obs_torus_minor_radius": 0.5, # 0.3
+    "obs_torus_angle_center": 0, #np.pi, # 0.
+    "obs_torus_angle_range": np.pi, #2*np.pi,# np.pi
+    "obs_torus_major_radius": 0.5, #1, # 0.5
+    "obs_torus_minor_radius": 0.3, #0.5, # 0.3
     "obs_torus_height": 0.5,
     # obstacle size
     "max_obstacle_radius": 0.1,
@@ -52,6 +52,7 @@ class FrankaEnvSF(RobotEnv):
         self._obs_torus_major_radius = config["obs_torus_major_radius"]
         self._obs_torus_minor_radius = config["obs_torus_minor_radius"]
         self._obs_torus_height = config["obs_torus_height"]
+        self.simulating_point_cloud = config["simulating_point_cloud"]
 
         super().__init__(
             robot_name="franka",
@@ -79,86 +80,59 @@ class FrankaEnvSF(RobotEnv):
         goal_uid = add_goal(self._p, current_goal)
         return current_goal, goal_uid
 
-    # def _generate_random_obstacles(self):
-    #     current_obstacles = []
-    #     obstacle_uids = []
-
-    #     # if obstacle config list is given, sample one config from the list
-    #     if self.obstacle_cofigs is not None:
-    #         config = self.obstacle_cofigs[self.np_random.integers(1,len(self.obstacle_cofigs))]
-    #         for (i, obstacle) in enumerate(config):
-    #             obstacle_uids.append(
-    #                 add_obstacle_ball(self._p, obstacle['center'], obstacle['radius'])
-    #             )
-    #             current_obstacles.append(np.append(obstacle['center'], obstacle['radius']))
-    #         for i in range(len(config), self.max_obstacle_num):
-    #             current_obstacles.append(np.append(np.zeros(self.workspace_dim), -1.))
-    #     # otherwise, sample random obstacles with the specified parameters
-    #     else:
-    #         num_obstacles = self.np_random.integers(self.min_obstacle_num, self.max_obstacle_num + 1)
-    #         for i in range(self.max_obstacle_num):
-    #             if i < num_obstacles:
-    #                 radius = self.np_random.uniform(low=self.min_obstacle_radius, high=self.max_obstacle_radius)
-    #                 center = sample_from_torus_3d(
-    #                     self.np_random,
-    #                     self._obs_torus_angle_center, 
-    #                     self._obs_torus_angle_range,
-    #                     self._obs_torus_major_radius,
-    #                     self._obs_torus_minor_radius,
-    #                     self._obs_torus_height)
-    #                 obstacle_uids.append(
-    #                     add_obstacle_ball(self._p, center, radius)
-    #                 )
-    #                 current_obstacles.append(np.append(center, radius))
-    #             else:
-    #                 current_obstacles.append(np.append(np.zeros(self.workspace_dim), -1.))
-    #     # generate obstacle objects within pybullet
-    #     current_obstacles = np.array(current_obstacles).flatten()
-    #     return current_obstacles, obstacle_uids
-    
     def _generate_random_obstacles(self):
-        # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0) # code to disable rendering - need to find a pybullet client to use instead of p
-
+        if self.simulating_point_cloud:
+            return self.generate_obs_LHC()
+        else:
+            return self.generate_obs_random()
+    
+    
+    def generate_obs_random(self):
         current_obstacles = []
         obstacle_uids = []
-        
+
+        # if obstacle config list is given, sample one config from the list
+        if self.obstacle_cofigs is not None:
+            config = self.obstacle_cofigs[self.np_random.integers(1,len(self.obstacle_cofigs))]
+            for (i, obstacle) in enumerate(config):
+                obstacle_uids.append(
+                    add_obstacle_ball(self._p, obstacle['center'], obstacle['radius'])
+                )
+                current_obstacles.append(np.append(obstacle['center'], obstacle['radius']))
+            for i in range(len(config), self.max_obstacle_num):
+                current_obstacles.append(np.append(np.zeros(self.workspace_dim), -1.))
+        # otherwise, sample random obstacles with the specified parameters
+        else:
+            num_obstacles = self.np_random.integers(self.min_obstacle_num, self.max_obstacle_num + 1)
+            for i in range(self.max_obstacle_num):
+                if i < num_obstacles:
+                    radius = self.np_random.uniform(low=self.min_obstacle_radius, high=self.max_obstacle_radius)
+                    center = sample_from_torus_3d(
+                        self.np_random,
+                        self._obs_torus_angle_center, 
+                        self._obs_torus_angle_range,
+                        self._obs_torus_major_radius,
+                        self._obs_torus_minor_radius,
+                        self._obs_torus_height)
+                    obstacle_uids.append(
+                        add_obstacle_ball(self._p, center, radius)
+                    )
+                    current_obstacles.append(np.append(center, radius))
+                else:
+                    current_obstacles.append(np.append(np.zeros(self.workspace_dim), -1.))
+        # generate obstacle objects within pybullet
+        current_obstacles = np.array(current_obstacles).flatten()
+        return current_obstacles, obstacle_uids        
+    
+    def generate_obs_LHC(self):
+        current_obstacles = []
+        obstacle_uids = []
+    
         # Adding big tunnel
-        # obstacle_uids.append(add_obstacle_cylinder(self._p, [1.5,0,1.2], radius=1))
-        obstacle_uids.append(add_obstacle_cuboid(self._p, [1.6,0,0], [1, 20, 2]))
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[1.6,0,0], size=[1, 20, 2]))
+        center = [0.5, -0.5, 0.7]
+        s = 0.2
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=center, size=[s, s, s]))
+        print("added small cube", obstacle_uids)
         
-        # # TODO - this centre and radius value seen as centre, radius below, is hard coded
-        # current_obstacles.append(np.append([1.5,0,1.2], 1))
-
-        # Adding cubes
-        for i in range(30):
-            # randomly scatter cubes along the tunnel wall
-            center = [random.uniform(0.5,0.6),random.uniform(-10, 10), random.uniform(0, 1.7)]
-            s = random.uniform(0.05, 0.2) # half side length
-            obstacle_uids.append(add_obstacle_cuboid(self._p, center, size=[s, s, s]))
-            
-            # # TODO - this centre and radius value seen as centre, radius below, is hard coded
-            # current_obstacles.append(np.append(center, s))
-        
-
-        # current_obstacles = np.array(current_obstacles).flatten()
         return current_obstacles, obstacle_uids
-        
-        
-
-    # def _generate_random_obstacles(self):
-    #     current_obstacles = []
-    #     obstacle_uids = []
-
-    #     # Adding big tunnel
-    #     obstacle_uids.append(add_big_cylinder())
-    #     # TODO - this centre and radius value seen as centre, radius below, is hard coded
-    #     current_obstacles.append(np.append([5.,-1.75,1], 1))
-
-    #     # Adding cube
-    #     obstacle_uids.append(add_cuboid())
-    #     # TODO - this centre and radius value seen as centre, radius below, is hard coded
-    #     # current_obstacles.append(np.append([0.5,-0.8,1.25], 0.03))
-    #     current_obstacles.append(np.append([0.2,-0.5,0.25], 0.03))
-
-    #     current_obstacles = np.array(current_obstacles).flatten()
-    #     return current_obstacles, obstacle_uids

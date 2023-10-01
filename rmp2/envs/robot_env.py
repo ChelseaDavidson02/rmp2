@@ -76,7 +76,6 @@ DEFAULT_CONFIG = {
     "simulating_point_cloud": False,
     "plotting_point_cloud": False,
     "point_cloud_radius": 0,
-    "max_num_depth_points": 0,
     "goal_distance_from_surface": 0.0,
     # pybullet gravity
     "gravity": -9.8,
@@ -144,7 +143,6 @@ class RobotEnv(gym.Env):
         self.simulating_point_cloud = config["simulating_point_cloud"]
         self.plotting_point_cloud = config['plotting_point_cloud']
         self.point_cloud_radius = config['point_cloud_radius']
-        self.max_num_depth_points = config["max_num_depth_points"]
         self.goal_distance_from_surface = config["goal_distance_from_surface"]
         
         if self.simulating_point_cloud:
@@ -174,8 +172,12 @@ class RobotEnv(gym.Env):
         self.dynamic_env = config["dynamic_env"]
         self.monorail_vel = config["monorail_vel"]
         # If monorail velocity isn't set but the environment is dynamic, set it to a default
-        if self.dynamic_env and self.monorail_vel == None:
-            self.monorail_vel = [0,0.1,0]
+        if self.dynamic_env:
+            if self.monorail_vel == None:
+                self.monorail_vel = [0,0.1,0]
+            # Calculate velocity at each timestep
+            self.velocity_per_step = np.array(self.monorail_vel) * self._time_step
+            
         
         # set up obstacle config
         self.obstacle_cofigs = config["obstacle_configs"]
@@ -258,9 +260,10 @@ class RobotEnv(gym.Env):
                 eef_info = p.getLinkState(self._robot.robot_uid, self._robot.eef_uid, computeLinkVelocity=1, computeForwardKinematics=1)
                 points, goal_point = self.camera.step_sensing(eef_pos=eef_info[0], distance=self.goal_distance_from_surface, voxel_size=self.point_cloud_radius*2)
                 
+                print("First goal point: ", goal_point)
                 # set the number of points to be used to represent the environment at each time step - must stay the same each sim step for the RMP tree
-                self.max_num_depth_points = len(points) 
-                print("Max depth points: ", self.max_num_depth_points)
+                self.max_obstacle_num = len(points) 
+                print("Max depth points: ", self.max_obstacle_num)
                 
                 # Plot point cloud with goal point
                 if self.plotting_point_cloud:
@@ -276,6 +279,8 @@ class RobotEnv(gym.Env):
                 radius_column = np.full((points.shape[0], 1), self.point_cloud_radius)
                 current_obstacles_array = np.hstack((points, radius_column))
                 self.current_obstacles = np.array(current_obstacles_array).flatten()
+                
+                print("Current obstacles radius: ", self.current_obstacles[7])
                 
             self._p.stepSimulation()
 
@@ -320,14 +325,11 @@ class RobotEnv(gym.Env):
 
         # Implement a dynamic environment - move all obstacles by a constant velocity
         if self.dynamic_env:
-            # Calculate velocity at each timestep
-            velocity=np.array(self.monorail_vel)
-            velocity_per_step = velocity * self._time_step
                       
             # Update simulation with new obstacle position
             for i in range(len(self.obstacle_uids)):  
                 currentPos, currentOrient = self._p.getBasePositionAndOrientation(self.obstacle_uids[i])
-                new_position = np.add(currentPos, velocity_per_step)  # find new position to update sim
+                new_position = np.add(np.array(currentPos), self.velocity_per_step)  # find new position to update sim
                 self._p.resetBasePositionAndOrientation(self.obstacle_uids[i], new_position, currentOrient)
                 
             # Update the current obstacles with the ones found from the sensed camera
@@ -336,11 +338,11 @@ class RobotEnv(gym.Env):
                 points, goal_point = self.camera.step_sensing(eef_pos=eef_info[0], distance=self.goal_distance_from_surface, voxel_size=self.point_cloud_radius*2) # *2 since voxel is cube
 
                 # make sure we have the exact same number of obstacles each time step
-                if len(points) > self.max_num_depth_points: # if we have too many points, randomly sample
-                    randomly_sampled_indices = np.random.choice(points.shape[0], size=self.max_num_depth_points, replace=False)
+                if len(points) > self.max_obstacle_num: # if we have too many points, randomly sample
+                    randomly_sampled_indices = np.random.choice(points.shape[0], size=self.max_obstacle_num, replace=False)
                     points = points[randomly_sampled_indices] 
-                elif len(points) < self.max_num_depth_points:# if we have too little points, randomly duplicate
-                    random_indices = np.random.choice(len(points), size=self.max_num_depth_points-len(points), replace=True)
+                elif len(points) < self.max_obstacle_num:# if we have too little points, randomly duplicate
+                    random_indices = np.random.choice(len(points), size=self.max_obstacle_num-len(points), replace=True)
                     duplicated_points = points[random_indices]
 
                     # Stack the duplicated points
@@ -389,6 +391,8 @@ class RobotEnv(gym.Env):
                     distance_to_obstacle = point[BULLET_CLOSEST_POINT_DISTANCE_INDEX]
                     vector_to_obstacle = distance_to_obstacle * np.array(point[BULLET_CLOSEST_POINT_CONTACT_NORMAL_INDEX])
             vector_obstacles.append(vector_to_obstacle[:self.workspace_dim])
+        
+       
         for _ in range(len(self.obstacle_uids), self.max_obstacle_num):
             vector_obstacles.append(np.zeros((self.workspace_dim,)))
         
