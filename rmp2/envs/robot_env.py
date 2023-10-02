@@ -254,11 +254,10 @@ class RobotEnv(gym.Env):
             
             # set the current obstacles to be a sphere parameterisation of the environment found with the camera
             if self.simulating_point_cloud:
-                self.camera.setup_point_cloud(robot=self._robot, goal_uid=self.goal_uid)
+                self.camera.setup_point_cloud(robot=self._robot, goal_uid=self.goal_uid, distance=self.goal_distance_from_surface, voxel_size=self.point_cloud_radius*2)
                 
                 # Find point cloud and goal point
-                eef_info = p.getLinkState(self._robot.robot_uid, self._robot.eef_uid, computeLinkVelocity=1, computeForwardKinematics=1)
-                points, goal_point = self.camera.step_sensing(eef_pos=eef_info[0], distance=self.goal_distance_from_surface, voxel_size=self.point_cloud_radius*2)
+                points, goal_point = self.camera.step_sensing()
                 
                 print("First goal point: ", goal_point)
                 # set the number of points to be used to represent the environment at each time step - must stay the same each sim step for the RMP tree
@@ -300,6 +299,7 @@ class RobotEnv(gym.Env):
                 print('Successfully generated a valid initial configuration')
                 break
             print('config in collision...regenerating...')
+        
         self._observation = self.get_extended_observation()
         return np.array(self._observation)
 
@@ -334,9 +334,8 @@ class RobotEnv(gym.Env):
                 
             # Update the current obstacles with the ones found from the sensed camera
             if self.simulating_point_cloud: 
-                eef_info = p.getLinkState(self._robot.robot_uid, self._robot.eef_uid, computeLinkVelocity=1, computeForwardKinematics=1)
-                points, goal_point = self.camera.step_sensing(eef_pos=eef_info[0], distance=self.goal_distance_from_surface, voxel_size=self.point_cloud_radius*2) # *2 since voxel is cube
-
+                points, goal_point = self.camera.step_sensing()
+                
                 # make sure we have the exact same number of obstacles each time step
                 if len(points) > self.max_obstacle_num: # if we have too many points, randomly sample
                     randomly_sampled_indices = np.random.choice(points.shape[0], size=self.max_obstacle_num, replace=False)

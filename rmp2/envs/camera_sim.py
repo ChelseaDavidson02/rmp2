@@ -176,15 +176,19 @@ class Camera():
         self.goal_line_ID = None
         self.ideal_pose = None
         self.iteration = 0
+        self.distance = None
+        self.voxel_size = None
         
     
-    def setup_point_cloud(self, robot, goal_uid):
+    def setup_point_cloud(self, robot, goal_uid, distance, voxel_size):
         """
         Sets up the plot used to display the point cloud
         """
         # Store which robot is in the sim
         self.robot = robot
         self.goal_uid = goal_uid
+        self.distance = distance
+        self.voxel_size = voxel_size
         
         plt.close('all')
         # to run GUI event loop
@@ -215,9 +219,9 @@ class Camera():
 
         self.view_matrix = self.cam_extrinsic.get_view_matrix(base_pos)
         self.projection_matrix = self.cam_intrinsic.get_projection_matrix()
-    
+
         
-    def step_sensing(self, eef_pos, distance, voxel_size):
+    def step_sensing(self):
         """
         Captures camera data in the current pybullet environment, plots the point cloud and returns points 
         representing the point cloud of the current environment. 
@@ -230,9 +234,10 @@ class Camera():
         all_points = self.get_point_cloud(imgs)
         points = self.restrict_ROI(all_points)
         t2 = time.time()
-        downsampled_points = self.downsample_point_cloud(points, voxel_size)
+        downsampled_points = self.downsample_point_cloud(points, self.voxel_size)
         t3 = time.time()
-        goal_position = self.get_goal_point(points, eef_pos, distance)
+        eef_info = p.getLinkState(self.robot.robot_uid, self.robot.eef_uid, computeLinkVelocity=1, computeForwardKinematics=1)
+        goal_position = self.get_goal_point(points, eef_info[0], self.distance)
         t4 = time.time()
         
         print("Time taken updating the camera: ", t1-t0)
@@ -240,8 +245,10 @@ class Camera():
         print("Time taken downsampling: ", t3-t2)
         print("Time taken getting goal point: ", t4-t3)
         print("Total time: ", t4-t1)
+        
         return downsampled_points, goal_position
-    
+            
+
     def update_camera(self):
         """
         Returns the simulated images for the current state of the pybullet environment.
@@ -300,22 +307,11 @@ class Camera():
         return points
     
     def restrict_ROI(self, point_cloud, max_x_distance = 1.0, max_y_distance = 0.5, max_z_distance = 1.1):
-        x_coordinates = point_cloud[:, 0]
-        y_coordinates = point_cloud[:, 1]
-        z_coordinates = point_cloud[:, 2]
-
-        # Create boolean masks for each dimension
-        x_mask = np.abs(x_coordinates) <= max_x_distance
-        y_mask = np.abs(y_coordinates) <= max_y_distance
-        z_mask = np.abs(z_coordinates) <= max_z_distance
+        mask = (np.abs(point_cloud[:, 0]) <= max_x_distance) & \
+           (np.abs(point_cloud[:, 1]) <= max_y_distance) & \
+           (np.abs(point_cloud[:, 2]) <= max_z_distance)
         
-        # Combine the masks using logical AND to get the final mask
-        mask = x_mask & y_mask & z_mask
-
-        # Apply the final mask to filter the points
-        restricted_point_cloud = point_cloud[mask]
-        
-        return restricted_point_cloud
+        return point_cloud[mask]
     
     def downsample_point_cloud(self, points, voxel_size):
         # Do voxel downsampling - equations recieved from chatGPT - "I have a set of 21,000 points representing a point cloud as an numpy array in python and I want to apply voxel downsampling on these. How do I do that?"
@@ -349,7 +345,7 @@ class Camera():
         x_cp, y_cp, z_cp = closest_point[0], closest_point[1], closest_point[2]
         self.scatter2._offsets3d = (np.array([x_cp]), np.array([y_cp]), np.array([z_cp]))
 
-        plt.pause(0.001) #TODO
+        plt.pause(0.0001) #TODO
         t1 = time.time()
         print("Time taken plotting: ", t1-t0)
         

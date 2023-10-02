@@ -34,7 +34,7 @@ rmp_params:
         metric_weight: 0.05
     target_rmp:
         accel_p_gain: 80. #50.
-        accel_d_gain: 70.
+        accel_d_gain: 100 #70.
         accel_norm_eps: .075
         metric_alpha_length_scale: .05
         min_metric_alpha: .03
