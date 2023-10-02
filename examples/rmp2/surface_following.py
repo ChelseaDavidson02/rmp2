@@ -18,9 +18,9 @@ rmp_graph = RobotRMPGraph(robot_name="franka", dtype=dtype, timed=True)
 
 config = {
     "goal": [0.5, -0.5, 0.5],
-    "horizon": 6000, # 1800
+    "horizon": 8000, # 1800
     "action_repeat": 3, # Repeat the action for this many time steps
-    "q_init": [0.0000, -pi/5,  0.0000, -5*pi/8,  0.0000,  pi,  pi/4], #[ 0.0000, -pi/5,  0.0000, -1*pi/2,  0.0000,  3*pi/4,  pi/4],
+    "q_init": [0.0000, -pi/5,  0.0000, -1*pi/2,  0.0000,  3*pi/4,  pi/4],
     "render": True,
     "max_obstacle_num": 8,  # 4
     "min_obstacle_num": 8,  # 4  
@@ -34,7 +34,7 @@ config = {
     "plotting_point_cloud": True,
     "point_cloud_radius": 0.02,
     "goal_distance_from_surface": 0.2,
-    "env_mode": 'cylinder_sphere',
+    "env_mode": 'cylinder_combo',
 }
 if config['waypoint_reaching']:
     goal = config['waypoints'][0]

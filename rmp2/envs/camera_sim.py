@@ -240,11 +240,11 @@ class Camera():
         goal_position = self.get_goal_point(points, eef_info[0], self.distance)
         t4 = time.time()
         
-        # print("Time taken updating the camera: ", t1-t0)
-        # print("Time taken getting point cloud: ", t2-t1)
-        # print("Time taken downsampling: ", t3-t2)
-        # print("Time taken getting goal point: ", t4-t3)
-        # print("Total time: ", t4-t1)
+        print("Time taken updating the camera: ", t1-t0)
+        print("Time taken getting point cloud: ", t2-t1)
+        print("Time taken downsampling: ", t3-t2)
+        print("Time taken getting goal point: ", t4-t3)
+        print("Total time: ", t4-t0)
         
         return downsampled_points, goal_position
             

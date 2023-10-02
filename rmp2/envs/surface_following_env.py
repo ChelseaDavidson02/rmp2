@@ -83,16 +83,20 @@ class FrankaEnvSF(RobotEnv):
         return current_goal, goal_uid
 
     def _generate_random_obstacles(self):
+        obstacle_colour = [0.8, 0.0, 0.0, 1]
         if self.env_mode == 'single_body':
-            return self.generate_single_body_obst()
+            return self.generate_single_body_obst(obstacle_colour)
         elif self.env_mode == 'single_eef':
-            return self.generate_single_eef_obst()
+            return self.generate_single_eef_obst(obstacle_colour)
         elif self.env_mode == 'cylinder_sphere':
-            return self.generate_cylinder_with_spherical_obst()
+            return self.generate_cylinder_with_spherical_obst(obstacle_colour)
+        elif self.env_mode == 'cylinder_combo':
+            return self.generate_cylinder_combination_obst(obstacle_colour)
         elif self.env_mode == 'surface':
             return self.generate_surface()
         elif self.env_mode == 'random_spheres':
             return self.generate_obs_random()
+    
             
     
     
@@ -133,26 +137,26 @@ class FrankaEnvSF(RobotEnv):
         current_obstacles = np.array(current_obstacles).flatten()
         return current_obstacles, obstacle_uids        
     
-    def generate_single_eef_obst(self):
+    def generate_single_eef_obst(self, obstacle_colour):
         current_obstacles = []
         obstacle_uids = []
     
         # Adding big tunnel
-        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[1.6,0,0], size=[1, 20, 2]))
-        center = [0.5, -0.5, 0.7]
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[1.6,0,1], size=[1, 20, 1]))
+        center = [0.5, -0.5, 1.0]
         s = 0.2
-        obstacle_uids.append(add_obstacle_cuboid(self._p, center=center, size=[s, s, s]))
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=center, size=[s, s, s], color=obstacle_colour))
         
         return current_obstacles, obstacle_uids
 
-    def generate_single_body_obst(self):
+    def generate_single_body_obst(self, obstacle_colour):
         current_obstacles = []
         obstacle_uids = []
     
         # Adding big tunnel
         obstacle_uids.append(add_obstacle_cuboid(self._p, center=[1.6,0,0], size=[1, 20, 2]))
         center = [0.5, -0.5, 0.7]
-        obstacle_uids.append(add_obstacle_cuboid(self._p, center=center, size=[0.4, 0.2, 0.1]))
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=center, size=[0.4, 0.2, 0.1], color=obstacle_colour))
         
         # initial_pos = [0.0000, -pi/5,  0.0000, -5*pi/8,  0.0000,  pi,  pi/4]
         # dist_x: 0.1
@@ -179,7 +183,32 @@ class FrankaEnvSF(RobotEnv):
         # Adding big tunnel
         obstacle_uids.append(add_obstacle_cylinder(self._p, center=[1.6,0,0.5]))
         center = [0.5, -0.5, 0.7]
-        obstacle_uids.append(add_obstacle_ball(self._p, center=center, radius=0.2))
+        obstacle_uids.append(add_obstacle_ball(self._p, center=center, radius=0.2, color=obstacle_colour))
+        
+        return current_obstacles, obstacle_uids
+    
+    def generate_cylinder_combination_obst(self, obstacle_colour):
+        current_obstacles = []
+        obstacle_uids = []
+        
+        # Adding big tunnel
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[1.6,0,1.1], radius = 1.1))
+        
+        # Adding ball
+        obstacle_uids.append(add_obstacle_ball(self._p, center=[0.5, -0.5, 1.0], radius=0.2, color=obstacle_colour))
+        
+        # Adding body obstacle
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -1.5, 0.8], size=[0.3, 0.2, 0.1], color=obstacle_colour))
+        
+        # Adding small cylinder above body obstacle
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.3, -1.5, 1.4], radius=0.2, length = 0.4, color=obstacle_colour))
+        
+        # Adding eef obstacle
+        s = 0.2
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -2.5, 1.0], size=[s, s, s], color=obstacle_colour))
+        
+        # Adding small cylinder
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.4, -3.5, 1.0], radius=0.2, length = 0.4, color=obstacle_colour))
         
         return current_obstacles, obstacle_uids
     
