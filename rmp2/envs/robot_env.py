@@ -77,6 +77,7 @@ DEFAULT_CONFIG = {
     "plotting_point_cloud": False,
     "point_cloud_radius": 0,
     "goal_distance_from_surface": 0.0,
+    "env_mode": None,
     # pybullet gravity
     "gravity": -9.8,
     # acceleration control mode
@@ -138,15 +139,6 @@ class RobotEnv(gym.Env):
                     cameraTargetPosition=self._cam_position)
         else:
             self._p.connect(p.DIRECT)
-            
-        # initialise the simulated camera and point cloud
-        self.simulating_point_cloud = config["simulating_point_cloud"]
-        self.plotting_point_cloud = config['plotting_point_cloud']
-        self.point_cloud_radius = config['point_cloud_radius']
-        self.goal_distance_from_surface = config["goal_distance_from_surface"]
-        
-        if self.simulating_point_cloud:
-            self.camera = Camera(self._p)
         
         # create the robot in pybullet
         self._robot = robot_sim.create_robot_sim(self.robot_name, self._p, self._time_step)
@@ -207,6 +199,18 @@ class RobotEnv(gym.Env):
         self._initial_goal_distance_min = config["initial_goal_distance_min"]
 
         self._acc_control_mode = config["acc_control_mode"]
+        
+        # initialise the simulated camera and point cloud
+        self.simulating_point_cloud = config["simulating_point_cloud"]
+        self.plotting_point_cloud = config['plotting_point_cloud']
+        self.point_cloud_radius = config['point_cloud_radius']
+        self.goal_distance_from_surface = config["goal_distance_from_surface"]
+        self.env_mode = config["env_mode"]
+        
+        if self.simulating_point_cloud:
+            self.camera = Camera(self._p)
+            # self._initial_goal_distance_min = self.goal_distance_from_surface
+            # self._initial_collision_buffer = self.goal_distance_from_surface - 0.05 # radius of goal sphere
 
         # set up random seed
         self.seed()
@@ -298,6 +302,9 @@ class RobotEnv(gym.Env):
                 distance_to_goal >= self._initial_goal_distance_min:
                 print('Successfully generated a valid initial configuration')
                 break
+            print("robot not in collision: ", not self._collision(buffer=self._initial_collision_buffer))
+            print("goal not in collision: ", not self._goal_obstacle_collision(buffer=self._initial_collision_buffer))
+            print("goal far enough away: ", distance_to_goal >= self._initial_goal_distance_min)
             print('config in collision...regenerating...')
         
         self._observation = self.get_extended_observation()

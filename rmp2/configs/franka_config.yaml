@@ -33,14 +33,14 @@ rmp_params:
         damping_gain: 5.0
         metric_weight: 0.05
     target_rmp:
-        accel_p_gain: 80. #50.
-        accel_d_gain: 100 #70.
+        accel_p_gain: 50. #80. #50.
+        accel_d_gain: 70. #100 #70.
         accel_norm_eps: .075
         metric_alpha_length_scale: .05
         min_metric_alpha: .03
         max_metric_scalar: 1.0
         min_metric_scalar: 0.5
-        proximity_metric_boost_scalar: 3.
+        proximity_metric_boost_scalar: 10. #3. #3.
         proximity_metric_boost_length_scale: .02
     collision_rmp:
         margin: 0.
@@ -48,9 +48,9 @@ rmp_params:
         damping_std_dev: .04
         damping_robustness_eps: .01
         damping_velocity_gate_length_scale: .01
-        repulsion_gain: 900. #800.
-        repulsion_std_dev: 0.05 #0.005 #.01
-        metric_modulation_radius: 0.6 #.5
+        repulsion_gain: 800. #800.
+        repulsion_std_dev: 0.03 #0.005 #.01
+        metric_modulation_radius: 0.5 #.5
         metric_scalar: 1.
         metric_exploder_std_dev: .02
         metric_exploder_eps: .001

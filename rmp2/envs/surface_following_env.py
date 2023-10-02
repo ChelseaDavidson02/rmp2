@@ -8,6 +8,7 @@ from rmp2.utils.python_utils import merge_dicts
 from rmp2.utils.bullet_utils import add_goal, add_obstacle_cylinder, add_obstacle_ball, add_obstacle_cuboid
 import numpy as np
 import random
+from math import pi
 
 DEFAULT_CONFIG = {
     # parameters for randomly generated goals
@@ -53,6 +54,7 @@ class FrankaEnvSF(RobotEnv):
         self._obs_torus_minor_radius = config["obs_torus_minor_radius"]
         self._obs_torus_height = config["obs_torus_height"]
         self.simulating_point_cloud = config["simulating_point_cloud"]
+        self.env_mode = config["env_mode"]
 
         super().__init__(
             robot_name="franka",
@@ -81,10 +83,17 @@ class FrankaEnvSF(RobotEnv):
         return current_goal, goal_uid
 
     def _generate_random_obstacles(self):
-        if self.simulating_point_cloud:
-            return self.generate_obs_LHC()
-        else:
+        if self.env_mode == 'single_body':
+            return self.generate_single_body_obst()
+        elif self.env_mode == 'single_eef':
+            return self.generate_single_eef_obst()
+        elif self.env_mode == 'cylinder_sphere':
+            return self.generate_cylinder_with_spherical_obst()
+        elif self.env_mode == 'surface':
+            return self.generate_surface()
+        elif self.env_mode == 'random_spheres':
             return self.generate_obs_random()
+            
     
     
     def generate_obs_random(self):
@@ -124,7 +133,7 @@ class FrankaEnvSF(RobotEnv):
         current_obstacles = np.array(current_obstacles).flatten()
         return current_obstacles, obstacle_uids        
     
-    def generate_obs_LHC(self):
+    def generate_single_eef_obst(self):
         current_obstacles = []
         obstacle_uids = []
     
@@ -133,6 +142,47 @@ class FrankaEnvSF(RobotEnv):
         center = [0.5, -0.5, 0.7]
         s = 0.2
         obstacle_uids.append(add_obstacle_cuboid(self._p, center=center, size=[s, s, s]))
-        print("added small cube", obstacle_uids)
         
         return current_obstacles, obstacle_uids
+
+    def generate_single_body_obst(self):
+        current_obstacles = []
+        obstacle_uids = []
+    
+        # Adding big tunnel
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[1.6,0,0], size=[1, 20, 2]))
+        center = [0.5, -0.5, 0.7]
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=center, size=[0.4, 0.2, 0.1]))
+        
+        # initial_pos = [0.0000, -pi/5,  0.0000, -5*pi/8,  0.0000,  pi,  pi/4]
+        # dist_x: 0.1
+        # dist_y: 0.1
+        # dist_z: 0
+        # pitch: 1.0471975512 
+        # yaw: -0.39269908169
+        
+        return current_obstacles, obstacle_uids
+    
+    def generate_surface(self):
+        current_obstacles = []
+        obstacle_uids = []
+    
+        # Adding big tunnel
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[1.6,0,0], size=[1, 20, 2]))
+        
+        return current_obstacles, obstacle_uids
+    
+    def generate_cylinder_with_spherical_obst(self):
+        current_obstacles = []
+        obstacle_uids = []
+    
+        # Adding big tunnel
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[1.6,0,0.5]))
+        center = [0.5, -0.5, 0.7]
+        obstacle_uids.append(add_obstacle_ball(self._p, center=center, radius=0.2))
+        
+        return current_obstacles, obstacle_uids
+    
+
+        
+    

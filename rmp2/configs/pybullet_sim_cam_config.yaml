@@ -13,11 +13,11 @@ intrinsic_params:
     farVal: 4.0
 
 extrinsic_params:
-    dist_x: 0.1
-    dist_y: 0
+    dist_x: 0.05
+    dist_y: 0.1
     dist_z: 0
     pitch: 1.0471975512 #0.39269908169
-    yaw: 0 # -0.62831853071 #-0.39269908169
+    yaw: -0.39269908169 #0 # -0.62831853071 #-0.39269908169
     roll: 0 # Currently roll is not supported (don't want camera rotated) 
     cam_dist: 100000
 
