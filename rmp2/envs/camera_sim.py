@@ -227,10 +227,10 @@ class Camera():
         representing the point cloud of the current environment. 
         """
         t0 = time.time()
-        self.bullet_client.changeVisualShape(self.goal_uid, -1, rgbaColor=[0, 0, 0, 0])
+        # self.bullet_client.changeVisualShape(self.goal_uid, -1, rgbaColor=[0, 0, 0, 0])
         imgs = self.update_camera()
         t1 = time.time()
-        self.bullet_client.changeVisualShape(self.goal_uid, -1, rgbaColor=[0, 1, 0, 1])
+        # self.bullet_client.changeVisualShape(self.goal_uid, -1, rgbaColor=[0, 1, 0, 1])
         all_points = self.get_point_cloud(imgs)
         points = self.restrict_ROI(all_points)
         t2 = time.time()
@@ -240,11 +240,11 @@ class Camera():
         goal_position = self.get_goal_point(points, eef_info[0], self.distance)
         t4 = time.time()
         
-        print("Time taken updating the camera: ", t1-t0)
-        print("Time taken getting point cloud: ", t2-t1)
-        print("Time taken downsampling: ", t3-t2)
-        print("Time taken getting goal point: ", t4-t3)
-        print("Total time: ", t4-t0)
+        # print("Time taken updating the camera: ", t1-t0)
+        # print("Time taken getting point cloud: ", t2-t1)
+        # print("Time taken downsampling: ", t3-t2)
+        # print("Time taken getting goal point: ", t4-t3)
+        # print("Total time: ", t4-t0)
         
         return downsampled_points, goal_position
             
@@ -259,7 +259,7 @@ class Camera():
         imgs = self.bullet_client.getCameraImage(self.cam_intrinsic.width, self.cam_intrinsic.height,
                                 self.view_matrix,
                                 self.projection_matrix, shadow=True,
-                                renderer=self.bullet_client.ER_TINY_RENDERER)
+                                renderer=self.bullet_client.ER_BULLET_HARDWARE_OPENGL)
         
         return imgs
     
@@ -290,9 +290,9 @@ class Camera():
         segmentation_mask = segmentation_mask.reshape(-1) # reshape the segmentation mask
 
         # Filter out "infinite" depths and pixels belonging to the robot or goal sphere (segmentation_mask == robot_uid when the pixels correspond to the robot)
-        # pixels_w_obs_only = np.logical_and(segmentation_mask != self.goal_uid, segmentation_mask != self.robot.robot_uid)
-        # valid_pixels = np.logical_and(pixels_w_obs_only, z < 1.00)
-        valid_pixels = np.logical_and(z < 1.00, segmentation_mask != self.robot.robot_uid)
+        pixels_w_obs_only = np.logical_and(segmentation_mask != self.goal_uid, segmentation_mask != self.robot.robot_uid)
+        valid_pixels = np.logical_and(pixels_w_obs_only, z < 1.00)
+        # valid_pixels = np.logical_and(z < 1.00, segmentation_mask != self.robot.robot_uid)
         x, y, z = x[valid_pixels], y[valid_pixels], z[valid_pixels]
         h = np.ones_like(z)
 
@@ -376,6 +376,27 @@ class Camera():
 
         # Calculate the unit vector by dividing the vector by its length
         unit_vector = vector / vector_length
+
+        # Rotate it around the z axis by 30 degrees
+        # Convert the angle to radians
+        if self.ideal_pose is not None:
+            print("ideal pose", self.ideal_pose)
+            delta_x = float(eef_location[0] - self.ideal_pose[0])
+            delta_y = float(eef_location[1] - self.ideal_pose[1])
+            angle_radians = np.arctan(delta_y/delta_x)
+            print("delta_x", delta_x)
+            print("delta_y", delta_y)
+            print("angle", angle_radians)
+
+            # Create the rotation matrix
+            cos_theta = np.cos(angle_radians)
+            sin_theta = np.sin(angle_radians)
+            R_z = np.array([[cos_theta, -sin_theta, 0],
+                            [sin_theta, cos_theta, 0],
+                            [0, 0, 1]])
+
+            # Perform the rotation
+            unit_vector = np.dot(R_z, unit_vector)
         
         goal_point = closest_point - (unit_vector*distance)
         
