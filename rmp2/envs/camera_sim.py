@@ -376,31 +376,83 @@ class Camera():
 
         # Calculate the unit vector by dividing the vector by its length
         unit_vector = vector / vector_length
+        
 
-        # Rotate it around the z axis by 30 degrees
         # Convert the angle to radians
         if self.ideal_pose is not None:
-            print("ideal pose", self.ideal_pose)
-            delta_x = float(eef_location[0] - self.ideal_pose[0])
-            delta_y = float(eef_location[1] - self.ideal_pose[1])
-            angle_radians = np.arctan(delta_y/delta_x)
-            print("delta_x", delta_x)
-            print("delta_y", delta_y)
-            print("angle", angle_radians)
+            # delta_x_current_to_obs = closest_point[0] - eef_location[0]
+            # delta_y_current_to_obs = closest_point[1] - eef_location[1]
+            # theta1 = np.arctan2(delta_y_current_to_obs, delta_x_current_to_obs)
+            
+            # delta_x_ideal_to_obs = closest_point[0] - self.ideal_pose[0]
+            # delta_y_ideal_to_obs = closest_point[1] - self.ideal_pose[1]
+            # theta2 = np.arctan2(delta_y_ideal_to_obs, delta_x_ideal_to_obs)
+            
+            # angle_radians = theta1 + theta2
+            # print("ideal pose", self.ideal_pose)
+            # delta_x = float(eef_location[0] - self.ideal_pose[0])
+            # delta_y = float(eef_location[1] - self.ideal_pose[1])
+            
+            # angle_radians = np.arctan2(delta_y, delta_x)
+            # print("delta_x", delta_x)
+            # print("delta_y", delta_y)
+            # print("angle", angle_radians)
+            
+            # # GOOD FROM HERE
+            # # To mitigate drift from the obstacle RMP, choose a goal position (there are infinitely many) which would move the robot towards its initial eef position and maintain a smooth trajectory between time steps
+            # # Find deviation between current eef pos and initial in terms of y  
+            
+            # delta_y = float(eef_location[1] - self.ideal_pose[1])
+            
+            # # Choose a solution which is rotated towards the initial eef position by an angle proportional to the difference in y positions
+            # if delta_y >= 0:
+            #     angle_deg = 40 * delta_y
+            #     angle_radians = np.deg2rad(angle_deg)
+            # else:
+            #     angle_deg = 40 * delta_y
+            #     angle_radians = -np.deg2rad(angle_deg)
+                
+            # print("angle degree:", angle_deg)
 
-            # Create the rotation matrix
-            cos_theta = np.cos(angle_radians)
-            sin_theta = np.sin(angle_radians)
-            R_z = np.array([[cos_theta, -sin_theta, 0],
-                            [sin_theta, cos_theta, 0],
-                            [0, 0, 1]])
+            # # Create the rotation matrix
+            # R_z = np.array([[np.cos(angle_radians), -np.sin(angle_radians), 0],
+            #    [np.sin(angle_radians), np.cos(angle_radians), 0],
+            #    [0, 0, 1]])
 
-            # Perform the rotation
-            unit_vector = np.dot(R_z, unit_vector)
+            # # Perform the rotation
+            # unit_vector = np.dot(R_z, unit_vector)
+            # Calculate the vector between the two points - this goes from object towards eef
+            origin_vector = closest_point - self.ideal_pose
+
+            # Calculate the length (magnitude) of the vector
+            origin_vector_length = np.linalg.norm(vector)
+
+            # Calculate the unit vector by dividing the vector by its length
+            origin_unit_vector = origin_vector / origin_vector_length
+            
+            # Piecewise function 
+            d = np.abs(np.linalg.norm(self.ideal_pose - eef_location))
+            d_1 = 0.1
+            d_2 = 0.2
+            if d < d_1:
+                print("Within allowable, alpha = 1")
+                alpha = 1
+            elif d > d_2:
+                print("Outside allowable, alpha = 0")
+                alpha = 0
+            else:
+                alpha = 1 - (d - d_1)/(d_2 - d_1)
+            
+            unit_vector = (alpha * unit_vector) + ((1-alpha) * origin_unit_vector)
+            print("d: ", d)
+            
+        goal_point = closest_point - (unit_vector*distance) 
+            
         
-        goal_point = closest_point - (unit_vector*distance)
+        # goal_point = closest_point - (unit_vector*distance)
         
-        self.goal_line_ID = p.addUserDebugLine(eef_pos, closest_point, lineColorRGB=[0, 1, 0])
+        # self.goal_line_ID = p.addUserDebugLine(eef_pos, closest_point, lineColorRGB=[0, 1, 0])
+        self.goal_line_ID = p.addUserDebugLine(goal_point, closest_point, lineColorRGB=[0, 1, 0])
         
         if self.ideal_pose is None:
             self.ideal_pose = goal_point
