@@ -31,7 +31,7 @@ BULLET_CLOSEST_POINT_DISTANCE_INDEX = 8
 
 DEFAULT_CONFIG = {
     # time setup
-    "time_step": 1/240.,
+    "time_step": 1/120.,
     "action_repeat": 3,
     "horizon": 1200,
     "terminate_after_collision": True,

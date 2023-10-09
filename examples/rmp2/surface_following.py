@@ -9,7 +9,7 @@ from rmp2.utils.env_wrappers import FrankaFullRMPWrapper
 import tensorflow as tf
 from math import pi
 
-n_trials = 15
+n_trials = 1
 seed = 15
 dtype = "float32"
 
@@ -20,7 +20,7 @@ config = {
     "goal": [0.5, -0.5, 0.5],
     "horizon": 8000, # 1800
     "action_repeat": 3, # Repeat the action for this many time steps
-    "q_init": [0.0000, -pi/5,  0.0000, -1*pi/2,  0.0000,  3*pi/4,  pi/4],
+    "q_init": [0.0000, -pi/4,  0.0000, -1*pi/2,  0.0000,  3*pi/4,  pi/4],
     "render": True,
     "max_obstacle_num": 8,  # 4
     "min_obstacle_num": 8,  # 4  
@@ -34,7 +34,7 @@ config = {
     "plotting_point_cloud": True,
     "point_cloud_radius": 0.02,
     "goal_distance_from_surface": 0.2,
-    "env_mode": 'cylinder_combo',
+    "env_mode": 'cylinder_cluttered',
 }
 if config['waypoint_reaching']:
     goal = config['waypoints'][0]
@@ -49,18 +49,24 @@ def policy(state,env):
     action = ts_action[0].numpy()
     return action
 
-env = FrankaEnvSF(config)
-env.seed(seed)
-# state = env.reset()
-# action = policy(state)
+try:
+    env = FrankaEnvSF(config)
+    env.seed(seed)
+    # state = env.reset()
+    # action = policy(state)
 
-for n in range(n_trials):
-    print("Resetting state")
-    state = env.reset()
-    print(f"Starting sim run {n}")
-    while True:
-        action = policy(state,env)
-        state, reward, done, _ = env.step(action)
-        if done:
-            break
+    for n in range(n_trials):
+        print("Resetting state")
+        state = env.reset()
+        print(f"Starting sim run {n}")
+        while True:
+            action = policy(state,env)
+            state, reward, done, _ = env.step(action)
+            if done:
+                break
+except KeyboardInterrupt:
+    print("Interupted")
+    env.camera.plot_error()
+
+env.camera.plot_error()
 

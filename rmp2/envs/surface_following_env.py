@@ -92,10 +92,15 @@ class FrankaEnvSF(RobotEnv):
             return self.generate_cylinder_with_spherical_obst(obstacle_colour)
         elif self.env_mode == 'cylinder_combo':
             return self.generate_cylinder_combination_obst(obstacle_colour)
+        elif self.env_mode == 'cylinder_cluttered':
+            return self.generate_cluttered_combination_obst(obstacle_colour)
+        elif self.env_mode == 'cylinder_overlap':
+            return self.generate_overlapping_combination_obst(obstacle_colour)
         elif self.env_mode == 'surface':
             return self.generate_surface()
         elif self.env_mode == 'random_spheres':
             return self.generate_obs_random()
+    
     
             
     
@@ -208,6 +213,88 @@ class FrankaEnvSF(RobotEnv):
         obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -2.5, 1.0], size=[s, s, s], color=obstacle_colour))
         
         # Adding small cylinder
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.4, -3.5, 1.0], radius=0.2, length = 0.4, color=obstacle_colour))
+        
+        return current_obstacles, obstacle_uids
+    
+    def generate_overlapping_combination_obst(self, obstacle_colour):
+        current_obstacles = []
+        obstacle_uids = []
+        
+        # Adding big tunnel
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[1.6,0,1.1], radius = 1.1))
+        
+        # Adding ball
+        obstacle_uids.append(add_obstacle_ball(self._p, center=[0.5, -0.5, 1.0], radius=0.2, color=obstacle_colour))
+        # Adding smaller balls and surrounding obstacles
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -0.4, 1.2], size=[0.1, 0.1, 0.1], color=obstacle_colour))
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.4, -0.8, 1.0], radius=0.1, length=0.5, angle_rotation_rads=[0,0,0], color=obstacle_colour))
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.6, -0.5, 0.8], size=[0.15, 0.15, 0.15], color=obstacle_colour))
+        obstacle_uids.append(add_obstacle_ball(self._p, center=[0.4, -0.9, 1.2], radius=0.1, color=obstacle_colour))
+        
+        # Adding body obstacle
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -1.2, 0.8], size=[0.3, 0.2, 0.1], color=obstacle_colour))
+        
+        # Adding small cylinder above body obstacle
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.3, -1.2, 1.2], radius=0.2, length = 0.4, color=obstacle_colour))
+        
+        # Adding eef obstacle
+        s = 0.2
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -1.5, 1.0], size=[s, s, s], color=obstacle_colour))
+        
+        # Adding small cylinder
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.4, -2.0, 1.0], radius=0.2, length = 0.4, color=obstacle_colour))
+        
+        return current_obstacles, obstacle_uids
+    
+    def generate_cluttered_combination_obst(self, obstacle_colour):
+        current_obstacles = []
+        obstacle_uids = []
+        
+        # Adding big tunnel
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[1.1,0,1.1], radius = 0.6))
+        
+        # Adding ball
+        obstacle_uids.append(add_obstacle_ball(self._p, center=[0.5, -0.5, 1.0], radius=0.2, color=obstacle_colour))
+        
+        # Adding small cylinder
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.5, -0.8, 1.0], radius=0.05, length = 0.4, angle_rotation_rads=[0,0,0], color=obstacle_colour))
+        
+        # Adding small ball
+        obstacle_uids.append(add_obstacle_ball(self._p, center=[0.5, -1.0, 0.8], radius=0.1, color=obstacle_colour))
+        
+        # Adding small box
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -1.1, 1.2], size=[0.05, 0.05, 0.05], color=obstacle_colour))
+        
+        # Adding body obstacle
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -1.5, 0.9], size=[0.3, 0.2, 0.1], color=obstacle_colour))
+        
+        # Adding small cylinder above body obstacle
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.3, -1.5, 1.2], radius=0.1, length = 0.4, color=obstacle_colour))
+        
+        # Adding small ball
+        obstacle_uids.append(add_obstacle_ball(self._p, center=[0.5, -1.9, 1.0], radius=0.08, color=obstacle_colour))
+        
+        # Adding thin cylinder 
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.5, -2.1, 1.2], radius=0.05, length = 0.4, angle_rotation_rads=[0,0,0], color=obstacle_colour))
+        
+        # Adding small box
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -2.15, 0.8], size=[0.05, 0.05, 0.05], color=obstacle_colour))
+        
+        # Adding eef obstacle
+        s = 0.2
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -2.5, 1.0], size=[s, s, s], color=obstacle_colour))
+        
+        # Adding thin cylinder
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.5, -2.9, 1.0], radius=0.05, length = 0.4, angle_rotation_rads=[0,0,0], color=obstacle_colour))
+        
+        # Adding small ball
+        obstacle_uids.append(add_obstacle_ball(self._p, center=[0.5, -3.1, 0.8], radius=0.1, color=obstacle_colour))
+        
+        # Adding small box
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -3.2, 1.2], size=[0.05, 0.05, 0.05], color=obstacle_colour))
+        
+        # Adding object cylinder
         obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.4, -3.5, 1.0], radius=0.2, length = 0.4, color=obstacle_colour))
         
         return current_obstacles, obstacle_uids
