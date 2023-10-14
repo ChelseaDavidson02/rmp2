@@ -422,7 +422,7 @@ class Camera():
             angle_deg = 40 * delta_y
             angle_radians = np.deg2rad(angle_deg)
                 
-            print("angle degree:", angle_deg)
+            # print("angle degree:", angle_deg)
 
             # Create the rotation matrix
             R_z = np.array([[np.cos(angle_radians), -np.sin(angle_radians), 0],

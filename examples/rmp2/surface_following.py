@@ -34,7 +34,7 @@ config = {
     "plotting_point_cloud": True,
     "point_cloud_radius": 0.02,
     "goal_distance_from_surface": 0.2,
-    "env_mode": 'cylinder_cluttered',
+    "env_mode": 'cylinder_combo',
 }
 if config['waypoint_reaching']:
     goal = config['waypoints'][0]
@@ -65,7 +65,7 @@ try:
             if done:
                 break
 except KeyboardInterrupt:
-    print("Interupted")
+    print("\nInterupted")
     env.camera.plot_error()
 
 env.camera.plot_error()
