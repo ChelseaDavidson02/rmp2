@@ -179,6 +179,7 @@ class Camera():
         self.distance = None
         self.voxel_size = None
         self.error_values = []
+        self.sim_running = False
         
     
     def setup_point_cloud(self, robot, goal_uid, distance, voxel_size):
@@ -221,6 +222,8 @@ class Camera():
         self.view_matrix = self.cam_extrinsic.get_view_matrix(base_pos)
         self.projection_matrix = self.cam_intrinsic.get_projection_matrix()
 
+    def activate_sim(self):
+        self.sim_running = True
         
     def step_sensing(self):
         """
@@ -383,8 +386,9 @@ class Camera():
         goal_point = closest_point - (unit_vector*distance) 
         
         # Calculate and store the error:
-        error = np.linalg.norm(goal_point - eef_location)
-        self.error_values.append(error)
+        if self.sim_running:
+            error = np.linalg.norm(goal_point - eef_location)
+            self.error_values.append(error)
     
         # Convert the angle to radians
         if self.ideal_pose is not None:

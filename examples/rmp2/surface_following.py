@@ -59,6 +59,7 @@ try:
         print("Resetting state")
         state = env.reset()
         print(f"Starting sim run {n}")
+        env.camera.activate_sim()
         while True:
             action = policy(state,env)
             state, reward, done, _ = env.step(action)
