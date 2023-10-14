@@ -197,20 +197,21 @@ class FrankaEnvSF(RobotEnv):
         obstacle_uids = []
         
         # Adding big tunnel
-        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[1.6,0,1.1], radius = 1.1))
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[1.4,0,1.3], radius = 1.))
         
         # Adding ball
         obstacle_uids.append(add_obstacle_ball(self._p, center=[0.5, -0.5, 1.0], radius=0.2, color=obstacle_colour))
         
         # Adding body obstacle
-        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -1.5, 0.8], size=[0.3, 0.2, 0.1], color=obstacle_colour))
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -1.5, 0.9], size=[0.3, 0.2, 0.1], color=obstacle_colour))
         
-        # Adding small cylinder above body obstacle
-        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.3, -1.5, 1.4], radius=0.2, length = 0.4, color=obstacle_colour))
         
         # Adding eef obstacle
         s = 0.2
-        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -2.5, 1.0], size=[s, s, s], color=obstacle_colour))
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.55, -1.9, 1.0], size=[s, s, s], color=obstacle_colour))
+
+        # Adding thin cylinder beside body obstacle
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.4, -2.7, 1.0], radius=0.05, length = 0.7, color=obstacle_colour, angle_rotation_rads = [0,0,0]))
         
         # Adding small cylinder
         obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.4, -3.5, 1.0], radius=0.2, length = 0.4, color=obstacle_colour))
