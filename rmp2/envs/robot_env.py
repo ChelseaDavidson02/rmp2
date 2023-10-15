@@ -165,6 +165,7 @@ class RobotEnv(gym.Env):
         self.dynamic_env = config["dynamic_env"]
         self.monorail_vel = config["monorail_vel"]
         # If monorail velocity isn't set but the environment is dynamic, set it to a default
+        self.velocity_per_step = [0,0,0]
         if self.dynamic_env:
             if self.monorail_vel == None:
                 self.monorail_vel = [0,0.1,0]
@@ -344,37 +345,37 @@ class RobotEnv(gym.Env):
                 new_position = np.add(np.array(currentPos), self.velocity_per_step)  # find new position to update sim
                 self._p.resetBasePositionAndOrientation(self.obstacle_uids[i], new_position, currentOrient)
                 
-            # Update the current obstacles with the ones found from the sensed camera
-            if self.simulating_point_cloud: 
-                if self.plotting_point_cloud_results:
-                    self.current_y_distance = self.current_time_step * self.velocity_per_step[1] 
-                    self.current_time_step +=1
-                points, goal_point = self.camera.step_sensing(self.current_y_distance)
-                
-                # make sure we have the exact same number of obstacles each time step
-                if len(points) > self.max_obstacle_num: # if we have too many points, randomly sample
-                    randomly_sampled_indices = np.random.choice(points.shape[0], size=self.max_obstacle_num, replace=False)
-                    points = points[randomly_sampled_indices] 
-                elif len(points) < self.max_obstacle_num:# if we have too little points, randomly duplicate
-                    random_indices = np.random.choice(len(points), size=self.max_obstacle_num-len(points), replace=True)
-                    duplicated_points = points[random_indices]
+        # Update the current obstacles with the ones found from the sensed camera
+        if self.simulating_point_cloud: 
+            if self.plotting_point_cloud_results:
+                self.current_y_distance = self.current_time_step * self.velocity_per_step[1] 
+                self.current_time_step +=1
+            points, goal_point = self.camera.step_sensing(self.current_y_distance)
+            
+            # make sure we have the exact same number of obstacles each time step
+            if len(points) > self.max_obstacle_num: # if we have too many points, randomly sample
+                randomly_sampled_indices = np.random.choice(points.shape[0], size=self.max_obstacle_num, replace=False)
+                points = points[randomly_sampled_indices] 
+            elif len(points) < self.max_obstacle_num:# if we have too little points, randomly duplicate
+                random_indices = np.random.choice(len(points), size=self.max_obstacle_num-len(points), replace=True)
+                duplicated_points = points[random_indices]
 
-                    # Stack the duplicated points
-                    points = np.vstack((points, duplicated_points))
-                
-                if self.plotting_point_cloud:
-                    self.camera.plot_point_cloud_dynamic(points, closest_point=goal_point)
-                
-                # Updating goal
-                self.current_goal = goal_point # Move goal to set distance from current closest obstacle
-                # Update simulation with new goal position
-                new_orientation = self._p.getQuaternionFromEuler([0, 0, 0])
-                self._p.resetBasePositionAndOrientation(self.goal_uid, self.current_goal, new_orientation)
-                
-                # updating obstacles
-                radius_column = np.full((points.shape[0], 1), self.point_cloud_radius)
-                current_obstacles_array = np.hstack((points, radius_column))
-                self.current_obstacles = np.array(current_obstacles_array).flatten()
+                # Stack the duplicated points
+                points = np.vstack((points, duplicated_points))
+            
+            if self.plotting_point_cloud:
+                self.camera.plot_point_cloud_dynamic(points, closest_point=goal_point)
+            
+            # Updating goal
+            self.current_goal = goal_point # Move goal to set distance from current closest obstacle
+            # Update simulation with new goal position
+            new_orientation = self._p.getQuaternionFromEuler([0, 0, 0])
+            self._p.resetBasePositionAndOrientation(self.goal_uid, self.current_goal, new_orientation)
+            
+            # updating obstacles
+            radius_column = np.full((points.shape[0], 1), self.point_cloud_radius)
+            current_obstacles_array = np.hstack((points, radius_column))
+            self.current_obstacles = np.array(current_obstacles_array).flatten()
             
 
         # vector eef to goal
