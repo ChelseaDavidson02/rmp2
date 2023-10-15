@@ -39,6 +39,8 @@ config = {
     "initial_collision_buffer": 0.0,
     "initial_joint_limit_buffer": 0.0,
     "initial_goal_distance_min": 0.0, 
+    # pybullet gravity
+    "gravity": 9.8, 
 }
 if config['waypoint_reaching']:
     goal = config['waypoints'][0]
