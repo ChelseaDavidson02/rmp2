@@ -18,9 +18,9 @@ rmp_graph = RobotRMPGraph(robot_name="franka", dtype=dtype, timed=True)
 
 config = {
     "goal": [0.5, -0.5, 0.5],
-    "horizon": 8000, # 1800
+    "horizon": 15000, # 1800
     "action_repeat": 3, # Repeat the action for this many time steps
-    "q_init": [0.0000, -pi/4,  0.0000, -1*pi/2,  0.0000,  3*pi/4,  pi/4],
+    "q_init": [0.0000, -1*pi/4,  0.0000, -7*pi/12,  0.0000,  10*pi/12,  pi/4],
     "render": True,
     "max_obstacle_num": 8,  # 4
     "min_obstacle_num": 8,  # 4  
@@ -29,12 +29,16 @@ config = {
     "waypoints": [[0.3, -0.2, 0.7], [0.3, -0.225, 0.7],[0.3, -0.25, 0.7], [0.3, -0.275, 0.7],[0.3, -0.3, 0.7], [0.3, -0.325, 0.7],[0.3, -0.35, 0.7], [0.3, -0.375, 0.7],[0.3, -0.4, 0.7], [0.3, -0.425, 0.7],[0.3, -0.45, 0.7],[0.3, -0.475, 0.7],[0.3, -0.5, 0.7]],
     "waypoint_reaching": False,
     "dynamic_env": True,
-    "monorail_vel": [0,0.4,0],
+    "monorail_vel": [0,0.6,0],
     "simulating_point_cloud": True,
-    "plotting_point_cloud": True,
+    "plotting_point_cloud": False,
+    "plotting_point_cloud_results": True,
     "point_cloud_radius": 0.02,
-    "goal_distance_from_surface": 0.2,
+    "goal_distance_from_surface": 0.20,
     "env_mode": 'cylinder_combo',
+    "initial_collision_buffer": 0.0,
+    "initial_joint_limit_buffer": 0.0,
+    "initial_goal_distance_min": 0.0, 
 }
 if config['waypoint_reaching']:
     goal = config['waypoints'][0]

@@ -180,9 +180,11 @@ class Camera():
         self.voxel_size = None
         self.error_values = []
         self.sim_running = False
+        self.y_distances = []
+        self.goal_distance = 0
         
     
-    def setup_point_cloud(self, robot, goal_uid, distance, voxel_size):
+    def setup_point_cloud(self, robot, goal_uid, distance, voxel_size, time_step):
         """
         Sets up the plot used to display the point cloud
         """
@@ -191,6 +193,7 @@ class Camera():
         self.goal_uid = goal_uid
         self.distance = distance
         self.voxel_size = voxel_size
+        self.time_step = time_step
         
         plt.close('all')
         # to run GUI event loop
@@ -225,7 +228,7 @@ class Camera():
     def activate_sim(self):
         self.sim_running = True
         
-    def step_sensing(self):
+    def step_sensing(self, current_y_distance):
         """
         Captures camera data in the current pybullet environment, plots the point cloud and returns points 
         representing the point cloud of the current environment. 
@@ -241,7 +244,7 @@ class Camera():
         downsampled_points = self.downsample_point_cloud(points, self.voxel_size)
         t3 = time.time()
         eef_info = p.getLinkState(self.robot.robot_uid, self.robot.eef_uid, computeLinkVelocity=1, computeForwardKinematics=1)
-        goal_position = self.get_goal_point(points, eef_info[0], self.distance)
+        goal_position = self.get_goal_point(points, eef_info[0], self.distance, current_y_distance)
         t4 = time.time()
         
         # print("Time taken updating the camera: ", t1-t0)
@@ -355,9 +358,9 @@ class Camera():
         t1 = time.time()
         # print("Time taken plotting: ", t1-t0)
         
-    def get_goal_point(self, points, eef_pos, distance):
+    def get_goal_point(self, points, eef_pos, distance, current_y_distance):
+        self.goal_distance = distance
         # Remove previous line ID of goal
-        
         if self.goal_line_ID is not None:
             self.bullet_client.removeUserDebugItem(self.goal_line_ID)
             
@@ -389,6 +392,7 @@ class Camera():
         if self.sim_running:
             error = np.linalg.norm(goal_point - eef_location)
             self.error_values.append(error)
+            self.y_distances.append(current_y_distance)
     
         # Convert the angle to radians
         if self.ideal_pose is not None:
@@ -435,6 +439,23 @@ class Camera():
 
             # Perform the rotation
             unit_vector = np.dot(R_z, unit_vector)
+
+
+            delta_z = float(self.ideal_pose[2]- eef_location[2])
+
+            angle_deg_z = 40 * delta_z
+            angle_radians_z = np.deg2rad(angle_deg_z)
+                
+            # print("angle degree:", angle_deg)
+
+            # Create the rotation matrix
+            R_y = np.array([
+                [np.cos(angle_radians_z), 0, np.sin(angle_radians_z)],
+                [0, 1, 0],
+                [-np.sin(angle_radians_z), 0, np.cos(angle_radians_z)]
+            ])
+            # Perform the rotation
+            unit_vector = np.dot(R_y, unit_vector)
             
             # delta_z = float(eef_location[2] - self.ideal_pose[2])
             
@@ -505,10 +526,6 @@ class Camera():
                         
         
         goal_point = closest_point - (unit_vector*distance) 
-        
-        # Calculate and store the error:
-        error = np.linalg.norm(goal_point - eef_location)
-        self.error_values.append(error)
 
         
         # self.goal_line_ID = p.addUserDebugLine(eef_pos, closest_point, lineColorRGB=[0, 1, 0])
@@ -532,14 +549,30 @@ class Camera():
 
     def plot_error(self):
         plt.figure()
-        plt.plot(self.error_values)
-        plt.xlabel('Time Step')
-        plt.ylabel('Error')
-        plt.title('Error Over Time')
+        # time_step_array = np.arange(0, len(self.error_values))
+        # monorail_velocity = 1.0
+        # goal_distance = self.go
+
+        # velocity = self.time_step * monorail_velocity
+        distance_array = np.array(self.y_distances)
+        error_values = np.array(self.error_values)
+        data = np.column_stack((distance_array, error_values))
+        # Store data in case want to change plots later
+        np.savetxt('error_data/error_data_0.6_0.2.csv', data, delimiter=",", header="x,y", comments="")
+        
+        percent_array = np.full(error_values.shape, 100/self.goal_distance)
+        percentage_error_values =  error_values * percent_array
+        
+        plt.plot(distance_array, percentage_error_values)
+        plt.xlabel('Y distance')
+        plt.ylabel('Percentage error')
+        plt.title('Error Over Time - Monorail velocity of 0.6m/s and goal distance of 0.2m')
         plt.grid(True, 'both')
         # Add text to the bottom center
-        text = "Average error: %.3f" % (np.average(self.error_values))
-        plt.text(0.95, -0.1, text, horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes)
+        average_error = np.average(self.error_values)
+        average_percentage_error = (average_error / self.goal_distance) *100
+        text = "Average percentage error: %.3f%%" % (average_percentage_error)
+        plt.text(0.88, -0.1, text, horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes)
 
-        plt.savefig('error_plot3.png')
+        plt.savefig('error_plots/error_plot_0.6_0.2.png')
         

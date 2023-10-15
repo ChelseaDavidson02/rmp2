@@ -75,6 +75,7 @@ DEFAULT_CONFIG = {
     #point cloud setup
     "simulating_point_cloud": False,
     "plotting_point_cloud": False,
+    "plotting_point_cloud_results": False,
     "point_cloud_radius": 0,
     "goal_distance_from_surface": 0.0,
     "env_mode": None,
@@ -203,14 +204,17 @@ class RobotEnv(gym.Env):
         # initialise the simulated camera and point cloud
         self.simulating_point_cloud = config["simulating_point_cloud"]
         self.plotting_point_cloud = config['plotting_point_cloud']
+        self.plotting_point_cloud_results = config['plotting_point_cloud_results']
         self.point_cloud_radius = config['point_cloud_radius']
         self.goal_distance_from_surface = config["goal_distance_from_surface"]
         self.env_mode = config["env_mode"]
         
         if self.simulating_point_cloud:
             self.camera = Camera(self._p)
-            # self._initial_goal_distance_min = self.goal_distance_from_surface
-            # self._initial_collision_buffer = self.goal_distance_from_surface - 0.05 # radius of goal sphere
+        if self.plotting_point_cloud_results:
+            self.current_time_step = 0
+            self.current_y_distance = 0
+
 
         # set up random seed
         self.seed()
@@ -248,6 +252,7 @@ class RobotEnv(gym.Env):
 
         # create robot
         self._robot = robot_sim.create_robot_sim(self.robot_name, self._p, self._time_step, mode=self._acc_control_mode)
+        self.current_y_distance = 0
 
         # keep generating initial configurations until a valid one
         while True:
@@ -258,10 +263,10 @@ class RobotEnv(gym.Env):
             
             # set the current obstacles to be a sphere parameterisation of the environment found with the camera
             if self.simulating_point_cloud:
-                self.camera.setup_point_cloud(robot=self._robot, goal_uid=self.goal_uid, distance=self.goal_distance_from_surface, voxel_size=self.point_cloud_radius*2)
+                self.camera.setup_point_cloud(robot=self._robot, goal_uid=self.goal_uid, distance=self.goal_distance_from_surface, voxel_size=self.point_cloud_radius*2, time_step = self._time_step)
                 
                 # Find point cloud and goal point
-                points, goal_point = self.camera.step_sensing()
+                points, goal_point = self.camera.step_sensing(self.current_y_distance)
                 
                 print("First goal point: ", goal_point)
                 # set the number of points to be used to represent the environment at each time step - must stay the same each sim step for the RMP tree
@@ -341,7 +346,10 @@ class RobotEnv(gym.Env):
                 
             # Update the current obstacles with the ones found from the sensed camera
             if self.simulating_point_cloud: 
-                points, goal_point = self.camera.step_sensing()
+                if self.plotting_point_cloud_results:
+                    self.current_y_distance = self.current_time_step * self.velocity_per_step[1] 
+                    self.current_time_step +=1
+                points, goal_point = self.camera.step_sensing(self.current_y_distance)
                 
                 # make sure we have the exact same number of obstacles each time step
                 if len(points) > self.max_obstacle_num: # if we have too many points, randomly sample
@@ -502,6 +510,11 @@ class RobotEnv(gym.Env):
                 print("Reached goal yay")
                 self.terminated = True
                 return True
+        if self.plotting_point_cloud_results:
+            if self.current_y_distance >=6.0:
+                print("------------ Finished test ------------")
+                self.terminated = True
+                return True
         
         return False
 
@@ -629,8 +642,11 @@ class RobotEnv(gym.Env):
         if self.q_init is None:
             initial_config = self.np_random.uniform(low=lower_limit, high=upper_limit)
         else:
-            initial_config = self.q_init + self.np_random.uniform(low=-0.1, high=0.1, size=self.cspace_dim)
-            initial_config = np.clip(initial_config, lower_limit, upper_limit)
+            if self.simulating_point_cloud:
+                initial_config = self.q_init
+            else:
+                initial_config = self.q_init + self.np_random.uniform(low=-0.1, high=0.1, size=self.cspace_dim)
+                initial_config = np.clip(initial_config, lower_limit, upper_limit)
         initial_vel = self.np_random.uniform(low=-0.005, high=0.005, size=self.cspace_dim)
         self._robot.reset(initial_config, initial_vel)
 
