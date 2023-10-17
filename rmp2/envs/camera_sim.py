@@ -348,7 +348,7 @@ class Camera():
         return centroids
         
     
-    def plot_point_cloud_dynamic(self, points, closest_point):
+    def plot_point_cloud_dynamic(self, points, goal_point):
         """
         Updates the plot with the given points.
         """
@@ -356,7 +356,7 @@ class Camera():
         x_coords, y_coords, z_coords = points[:, 0], points[:, 1], points[:, 2]
         self.scatter1._offsets3d = (x_coords, y_coords, z_coords)
         
-        x_cp, y_cp, z_cp = closest_point[0], closest_point[1], closest_point[2]
+        x_cp, y_cp, z_cp = goal_point[0], goal_point[1], goal_point[2]
         self.scatter2._offsets3d = (np.array([x_cp]), np.array([y_cp]), np.array([z_cp]))
 
         plt.pause(0.0001) #TODO
@@ -401,37 +401,10 @@ class Camera():
     
         # Convert the angle to radians
         if self.ideal_pose is not None:
-
-            # GOOD FROM HERE
             # To mitigate drift from the obstacle RMP, choose a goal position (there are infinitely many) which would move the robot towards its initial eef position and maintain a smooth trajectory between time steps
             # Find deviation between current eef pos and initial in terms of x and y  
-            # delta_x = float(self.ideal_pose[0] - eef_location[0])
-            
-            # # Choose a solution which is rotated towards the initial eef position by an angle proportional to the difference in y positions
-            # if delta_x >= 0:
-            #     angle_deg = 40 * delta_x
-            #     angle_radians = np.deg2rad(angle_deg)
-            # else:
-            #     angle_deg = 40 * delta_x
-            #     angle_radians = -np.deg2rad(angle_deg)
-                
-            # print("angle degree:", angle_deg)
-
-            # # Create the rotation matrix
-            # R_y = np.array([[np.cos(angle_radians), 0, np.sin(angle_radians)],
-            #     [0, 1, 0],
-            #     [-np.sin(angle_radians), 0, np.cos(angle_radians)]])
-
-            # # Perform the rotation
-            # unit_vector = np.dot(R_y, unit_vector)
-            
             delta_y = float(eef_location[1] - self.ideal_pose[1])
             
-            # Choose a solution which is rotated towards the initial eef position by an angle proportional to the difference in y positions
-            # if delta_y >= 0:
-            #     angle_deg = 40 * delta_y
-            #     angle_radians = np.deg2rad(angle_deg)
-            # else:
             angle_deg = 40 * delta_y
             angle_radians = np.deg2rad(angle_deg)
                 
@@ -462,74 +435,6 @@ class Camera():
             # Perform the rotation
             unit_vector = np.dot(R_y, unit_vector)
             
-            # delta_z = float(eef_location[2] - self.ideal_pose[2])
-            
-            # # Choose a solution which is rotated towards the initial eef position by an angle proportional to the difference in y positions
-            # if delta_z >= 0:
-            #     angle_deg = 40 * delta_z
-            #     angle_radians = np.deg2rad(angle_deg)
-            # else:
-            #     angle_deg = 40 * delta_z
-            #     angle_radians = -np.deg2rad(angle_deg)
-                
-            # print("angle degree:", angle_deg)
-
-            # # Create the rotation matrix
-            # # Create the rotation matrix
-            # R_y = np.array([[np.cos(angle_radians), 0, np.sin(angle_radians)],
-            #     [0, 1, 0],
-            #     [-np.sin(angle_radians), 0, np.cos(angle_radians)]])
-
-            # # Perform the rotation
-            # unit_vector = np.dot(R_y, unit_vector)
-            
-            
-            # # Calculate the vector between the two points - this goes from object towards eef
-            # origin_vector = closest_point - self.ideal_pose
-
-            # # Calculate the length (magnitude) of the vector
-            # origin_vector_length = np.linalg.norm(origin_vector)
-
-            # # Calculate the unit vector by dividing the vector by its length
-            # origin_unit_vector = origin_vector / origin_vector_length
-            # origin_goal_point = closest_point - (origin_unit_vector*distance) 
-            
-            # # Step function 
-            # d = np.linalg.norm(self.ideal_pose - eef_location)
-            # d_1 = 0.1
-            # d_2 = 0.4
-            # if d < d_1:
-            #     print("Within allowable, alpha = 1")
-            #     alpha = 1
-            # elif d > d_2:
-            #     print("Outside allowable, alpha = 0")
-            #     alpha = 0
-            # else:
-            #     alpha = 1 - (d - d_1)/(d_2 - d_1)
-            
-            # goal_point = (alpha * goal_point) + ((1-alpha) * origin_goal_point)
-            # print("d: ", d)
-            
-            # delta_x_current_to_obs = closest_point[0] - eef_location[0]
-            # delta_y_current_to_obs = closest_point[1] - eef_location[1]
-            # theta1 = np.arctan2(delta_y_current_to_obs, delta_x_current_to_obs)
-            
-            # delta_x_ideal_to_obs = closest_point[0] - self.ideal_pose[0]
-            # delta_y_ideal_to_obs = closest_point[1] - self.ideal_pose[1]
-            # theta2 = np.arctan2(delta_y_ideal_to_obs, delta_x_ideal_to_obs)
-            
-            # angle_radians = theta1 + theta2
-            # print("ideal pose", self.ideal_pose)
-            # delta_x = float(eef_location[0] - self.ideal_pose[0])
-            # delta_y = float(eef_location[1] - self.ideal_pose[1])
-            
-            # angle_radians = np.arctan2(delta_y, delta_x)
-            # print("delta_x", delta_x)
-            # print("delta_y", delta_y)
-            # print("angle", angle_radians)
-            
-                        
-        
         goal_point = closest_point - (unit_vector*distance) 
 
         
@@ -537,16 +442,6 @@ class Camera():
         
         if self.ideal_pose is None:
             self.ideal_pose = goal_point
-        
-        # If the robot is keeping a constant distance along a flat surface, move the goal to its original position
-        # upper_bound_y = closest_point[1] + 0.01
-        # lower_bound_y = closest_point[1] - 0.01
-        
-        # upper_bound_x = closest_point[0] + 0.01
-        # lower_bound_x = closest_point[0] - 0.01
-        
-        # if goal_point[1] < upper_bound_y and goal_point[1] > lower_bound_y and self.ideal_pose[0] < upper_bound_x and self.ideal_pose[0] > lower_bound_x:
-        #     goal_point = self.ideal_pose
         
         # Return the goal point
         return goal_point
@@ -562,7 +457,7 @@ class Camera():
         error_values = np.array(self.error_values)
         data = np.column_stack((distance_array, error_values))
         # Store data in case want to change plots later
-        np.savetxt('random_trials/error_data_0.2_0.2_t5.csv', data, delimiter=",", header="x,y", comments="")
+        np.savetxt('demo_data/error_data_0.2_0.2.csv', data, delimiter=",", header="x,y", comments="")
         
         percent_array = np.full(error_values.shape, 100/self.goal_distance)
         percentage_error_values =  error_values * percent_array
@@ -570,7 +465,7 @@ class Camera():
         plt.plot(distance_array, percentage_error_values)
         plt.xlabel('Y distance')
         plt.ylabel('Percentage error')
-        plt.title('Error Over Time - Monorail velocity of 1.0m/s and goal distance of 0.2m')
+        plt.title('Error Over Time - Monorail velocity of 0.2m/s and goal distance of 0.2m')
         plt.grid(True, 'both')
         # Add text to the bottom center
         average_error = np.average(self.error_values)
@@ -578,5 +473,5 @@ class Camera():
         text = "Average percentage error: %.3f%%" % (average_percentage_error)
         plt.text(0.88, -0.1, text, horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes)
 
-        # plt.savefig('error_plots/error_plot_1.0_0.2_v2.png')
+        plt.savefig('demo_data/error_plot_0.2_0.2.png')
         

@@ -31,7 +31,7 @@ BULLET_CLOSEST_POINT_DISTANCE_INDEX = 8
 
 DEFAULT_CONFIG = {
     # time setup
-    "time_step": 1/120.,
+    "time_step": 1/60.,
     "action_repeat": 3,
     "horizon": 1200,
     "terminate_after_collision": True,
@@ -276,7 +276,7 @@ class RobotEnv(gym.Env):
                 
                 # Plot point cloud with goal point
                 if self.plotting_point_cloud:
-                    self.camera.plot_point_cloud_dynamic(points, closest_point=goal_point)
+                    self.camera.plot_point_cloud_dynamic(points, goal_point=goal_point)
                 
                 # Updating goal
                 self.current_goal = goal_point # Move goal to set distance from current closest obstacle
@@ -353,6 +353,7 @@ class RobotEnv(gym.Env):
             points, goal_point = self.camera.step_sensing(self.current_y_distance)
             
             # make sure we have the exact same number of obstacles each time step
+            t0 = time.time()
             if len(points) > self.max_obstacle_num: # if we have too many points, randomly sample
                 randomly_sampled_indices = np.random.choice(points.shape[0], size=self.max_obstacle_num, replace=False)
                 points = points[randomly_sampled_indices] 
@@ -362,9 +363,10 @@ class RobotEnv(gym.Env):
 
                 # Stack the duplicated points
                 points = np.vstack((points, duplicated_points))
-            
+            t1 = time.time()
+            # print("Time taken to ensure constant obs number:", t1-t0)
             if self.plotting_point_cloud:
-                self.camera.plot_point_cloud_dynamic(points, closest_point=goal_point)
+                self.camera.plot_point_cloud_dynamic(points, goal_point=goal_point)
             
             # Updating goal
             self.current_goal = goal_point # Move goal to set distance from current closest obstacle
@@ -373,15 +375,20 @@ class RobotEnv(gym.Env):
             self._p.resetBasePositionAndOrientation(self.goal_uid, self.current_goal, new_orientation)
             
             # updating obstacles
+            t0 = time.time()
             radius_column = np.full((points.shape[0], 1), self.point_cloud_radius)
             current_obstacles_array = np.hstack((points, radius_column))
             self.current_obstacles = np.array(current_obstacles_array).flatten()
-            
+            t1 = time.time()
+            # print("Time taken to updating obstacle positions:", t1-t0)
 
         # vector eef to goal
         eef_position = np.array(self._p.getLinkState(self._robot.robot_uid, self._robot.eef_uid)[BULLET_LINK_POSE_INDEX])
+        t0 = time.time()
         delta_x = self.current_goal[:self.workspace_dim] - eef_position[:self.workspace_dim]
         distance_to_goal = np.linalg.norm(eef_position[:self.workspace_dim] - self.current_goal[:self.workspace_dim])
+        t1 = time.time()
+        # print("Time taken to finding distance to goal:", t1-t0)
         
         # Waypoint reaching - check if robot eef has reached waypoint (within a threshold)
         if self.waypoint_reaching and abs(distance_to_goal) < 0.005: 
@@ -396,6 +403,7 @@ class RobotEnv(gym.Env):
 
 
         # vector to closest point on obstacles
+        t0 = time.time()
         vector_obstacles = []
         for obstacle_uid in self.obstacle_uids:
             closest_points = self._p.getClosestPoints(self._robot.robot_uid, obstacle_uid, float_info.max) # Get the closest point (and normal vector) between the robot and the specified obstacle
@@ -421,6 +429,8 @@ class RobotEnv(gym.Env):
             vector_obstacles,
             self.current_obstacles)
         )
+        t1 = time.time()
+        # print("Time taken getting observation:", t1-t0)
         return self._observation
 
 
@@ -448,7 +458,7 @@ class RobotEnv(gym.Env):
             
         
         reward = _reward / (i + 1)
-            
+        # print("---Finding state---")
         self._observation = self.get_extended_observation()
 
         return np.array(self._observation), reward, done, {}
