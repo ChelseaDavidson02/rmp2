@@ -562,7 +562,7 @@ class Camera():
         error_values = np.array(self.error_values)
         data = np.column_stack((distance_array, error_values))
         # Store data in case want to change plots later
-        np.savetxt('error_data/error_data_1.0_0.2.csv', data, delimiter=",", header="x,y", comments="")
+        np.savetxt('random_trials/error_data_0.2_0.2_t5.csv', data, delimiter=",", header="x,y", comments="")
         
         percent_array = np.full(error_values.shape, 100/self.goal_distance)
         percentage_error_values =  error_values * percent_array
@@ -578,5 +578,5 @@ class Camera():
         text = "Average percentage error: %.3f%%" % (average_percentage_error)
         plt.text(0.88, -0.1, text, horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes)
 
-        plt.savefig('error_plots/error_plot_1.0_0.2_v2.png')
+        # plt.savefig('error_plots/error_plot_1.0_0.2_v2.png')
         
