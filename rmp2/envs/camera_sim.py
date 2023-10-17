@@ -202,7 +202,7 @@ class Camera():
         self.figure = plt.figure()
         
         self.ax = self.figure.add_subplot(111, projection='3d')
-        self.scatter1 = self.ax.scatter([], [], [], s=36)
+        self.scatter1 = self.ax.scatter([], [], [], s=66)
         self.scatter2 = self.ax.scatter([], [], [],  c='g', marker='o', s=50, label='Specific Point')
 
 
@@ -239,19 +239,24 @@ class Camera():
         t1 = time.time()
         # self.bullet_client.changeVisualShape(self.goal_uid, -1, rgbaColor=[0, 1, 0, 1])
         all_points = self.get_point_cloud(imgs)
-        points = self.restrict_ROI(all_points)
         t2 = time.time()
+        points = self.restrict_ROI(all_points)
         downsampled_points = self.downsample_point_cloud(points, self.voxel_size)
         t3 = time.time()
         eef_info = p.getLinkState(self.robot.robot_uid, self.robot.eef_uid, computeLinkVelocity=1, computeForwardKinematics=1)
-        goal_position = self.get_goal_point(points, eef_info[0], self.distance, current_y_distance)
         t4 = time.time()
+        goal_position = self.get_goal_point(points, eef_info[0], self.distance, current_y_distance)
+        t5 = time.time()
         
         # print("Time taken updating the camera: ", t1-t0)
         # print("Time taken getting point cloud: ", t2-t1)
         # print("Time taken downsampling: ", t3-t2)
-        # print("Time taken getting goal point: ", t4-t3)
+        # print("Time taken getting goal point: ", t5-t4)
         # print("Total time: ", t4-t0)
+
+        # print("Total points", len(all_points))
+        # print("ROI points", len(points))
+        # print("downsampled points", len(downsampled_points))
         
         return downsampled_points, goal_position
             
@@ -528,7 +533,6 @@ class Camera():
         goal_point = closest_point - (unit_vector*distance) 
 
         
-        # self.goal_line_ID = p.addUserDebugLine(eef_pos, closest_point, lineColorRGB=[0, 1, 0])
         self.goal_line_ID = p.addUserDebugLine(goal_point, closest_point, lineColorRGB=[0, 1, 0])
         
         if self.ideal_pose is None:
@@ -558,7 +562,7 @@ class Camera():
         error_values = np.array(self.error_values)
         data = np.column_stack((distance_array, error_values))
         # Store data in case want to change plots later
-        np.savetxt('error_data/error_data_0.6_0.2.csv', data, delimiter=",", header="x,y", comments="")
+        np.savetxt('error_data/error_data_1.0_0.2.csv', data, delimiter=",", header="x,y", comments="")
         
         percent_array = np.full(error_values.shape, 100/self.goal_distance)
         percentage_error_values =  error_values * percent_array
@@ -566,7 +570,7 @@ class Camera():
         plt.plot(distance_array, percentage_error_values)
         plt.xlabel('Y distance')
         plt.ylabel('Percentage error')
-        plt.title('Error Over Time - Monorail velocity of 0.6m/s and goal distance of 0.2m')
+        plt.title('Error Over Time - Monorail velocity of 1.0m/s and goal distance of 0.2m')
         plt.grid(True, 'both')
         # Add text to the bottom center
         average_error = np.average(self.error_values)
@@ -574,5 +578,5 @@ class Camera():
         text = "Average percentage error: %.3f%%" % (average_percentage_error)
         plt.text(0.88, -0.1, text, horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes)
 
-        plt.savefig('error_plots/error_plot_0.6_0.2.png')
+        plt.savefig('error_plots/error_plot_1.0_0.2_v2.png')
         

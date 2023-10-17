@@ -5,6 +5,7 @@ acceleration-based control for a pybullet robot
 from rmp2.utils.robot_config_utils import get_robot_urdf_path, get_robot_eef_uid
 import numpy as np
 import math
+import time
 
 # pybullet macro
 JOINT_POSE_IDX = 0
@@ -98,6 +99,7 @@ class RobotSim(object):
         apply velocity control to the robot
         :param action: joint accelerations
         """
+        t0 = time.time()
         if self.joint_poses is None or self.joint_vels is None:
             raise Exception('Error: make sure to call reset() before step!')
         
@@ -111,6 +113,8 @@ class RobotSim(object):
         self.target_joint_vels[self.target_joint_poses == self._joint_upper_limit] = 0.
         self.target_joint_vels = np.clip(self.target_joint_vels, -self._joint_vel_limit, self._joint_vel_limit)
         
+        t1 = time.time()
+        # print("Time taken finding new joint position and velocity", t1-t0)
         self.bullet_client.setJointMotorControlArray(
             self.robot_uid, self._joint_indices, 
             self.bullet_client.POSITION_CONTROL, 

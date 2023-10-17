@@ -8,6 +8,8 @@ from rmp2.envs import FrankaEnvSF
 from rmp2.utils.env_wrappers import FrankaFullRMPWrapper
 import tensorflow as tf
 from math import pi
+import time
+
 
 n_trials = 1
 seed = 15
@@ -29,11 +31,11 @@ config = {
     "waypoints": [[0.3, -0.2, 0.7], [0.3, -0.225, 0.7],[0.3, -0.25, 0.7], [0.3, -0.275, 0.7],[0.3, -0.3, 0.7], [0.3, -0.325, 0.7],[0.3, -0.35, 0.7], [0.3, -0.375, 0.7],[0.3, -0.4, 0.7], [0.3, -0.425, 0.7],[0.3, -0.45, 0.7],[0.3, -0.475, 0.7],[0.3, -0.5, 0.7]],
     "waypoint_reaching": False,
     "dynamic_env": True,
-    "monorail_vel": [0,0.6,0],
+    "monorail_vel": [0,1.0,0],
     "simulating_point_cloud": True,
     "plotting_point_cloud": False,
     "plotting_point_cloud_results": True,
-    "point_cloud_radius": 0.02,
+    "point_cloud_radius": 0.03,
     "goal_distance_from_surface": 0.20,
     "env_mode": 'cylinder_combo',
     "initial_collision_buffer": 0.0,
@@ -67,10 +69,17 @@ try:
         print(f"Starting sim run {n}")
         env.camera.activate_sim()
         while True:
+            # print("--------------------- START TIME STEP -----------------------")
+            t_start = time.time()
             action = policy(state,env)
+            t_end = time.time()
+            # print("Time taken to get the policy", t_end-t_start)
+            # print("Doing env.step(action)")
             state, reward, done, _ = env.step(action)
             if done:
                 break
+            t_end2 = time.time()
+            # print("Time step takes", t_end2-t_start)
 except KeyboardInterrupt:
     print("\nInterupted")
     env.camera.plot_error()
