@@ -31,7 +31,7 @@ BULLET_CLOSEST_POINT_DISTANCE_INDEX = 8
 
 DEFAULT_CONFIG = {
     # time setup
-    "time_step": 1/60.,
+    "time_step": 1/120.,
     "action_repeat": 3,
     "horizon": 1200,
     "terminate_after_collision": True,
@@ -233,6 +233,10 @@ class RobotEnv(gym.Env):
 
         self.viewer = None
 
+        # set up computation time variables
+        self.current_timestep_time = 0
+        self.comp_times = []
+
     def reset(self):
         """
         reset time and simulator
@@ -250,6 +254,9 @@ class RobotEnv(gym.Env):
         # Reset waypoint index
         if self.waypoint_reaching:
             self.waypoint_indx = 0
+
+        self.current_timestep_time = 0
+        self.comp_times = []
 
         # create robot
         self._robot = robot_sim.create_robot_sim(self.robot_name, self._p, self._time_step, mode=self._acc_control_mode)
@@ -350,21 +357,8 @@ class RobotEnv(gym.Env):
             if self.plotting_point_cloud_results:
                 self.current_y_distance = self.current_time_step * self.velocity_per_step[1] 
                 self.current_time_step +=1
-            points, goal_point = self.camera.step_sensing(self.current_y_distance)
+            points, goal_point = self.camera.step_sensing(self.current_y_distance, self.max_obstacle_num)
             
-            # make sure we have the exact same number of obstacles each time step
-            t0 = time.time()
-            if len(points) > self.max_obstacle_num: # if we have too many points, randomly sample
-                randomly_sampled_indices = np.random.choice(points.shape[0], size=self.max_obstacle_num, replace=False)
-                points = points[randomly_sampled_indices] 
-            elif len(points) < self.max_obstacle_num:# if we have too little points, randomly duplicate
-                random_indices = np.random.choice(len(points), size=self.max_obstacle_num-len(points), replace=True)
-                duplicated_points = points[random_indices]
-
-                # Stack the duplicated points
-                points = np.vstack((points, duplicated_points))
-            t1 = time.time()
-            # print("Time taken to ensure constant obs number:", t1-t0)
             if self.plotting_point_cloud:
                 self.camera.plot_point_cloud_dynamic(points, goal_point=goal_point)
             
@@ -381,6 +375,7 @@ class RobotEnv(gym.Env):
             self.current_obstacles = np.array(current_obstacles_array).flatten()
             t1 = time.time()
             # print("Time taken to updating obstacle positions:", t1-t0)
+            self.current_timestep_time += (t1-t0)
 
         # vector eef to goal
         eef_position = np.array(self._p.getLinkState(self._robot.robot_uid, self._robot.eef_uid)[BULLET_LINK_POSE_INDEX])
@@ -389,6 +384,7 @@ class RobotEnv(gym.Env):
         distance_to_goal = np.linalg.norm(eef_position[:self.workspace_dim] - self.current_goal[:self.workspace_dim])
         t1 = time.time()
         # print("Time taken to finding distance to goal:", t1-t0)
+        self.current_timestep_time += (t1-t0)
         
         # Waypoint reaching - check if robot eef has reached waypoint (within a threshold)
         if self.waypoint_reaching and abs(distance_to_goal) < 0.005: 
@@ -431,10 +427,12 @@ class RobotEnv(gym.Env):
         )
         t1 = time.time()
         # print("Time taken getting observation:", t1-t0)
+        self.current_timestep_time += (t1-t0)
         return self._observation
 
 
     def step(self, action):
+        self.current_timestep_time = 0
         action = np.clip(action, self._action_space.low, self._action_space.high)
         action[np.isnan(action)] = 0.
         _reward = 0
@@ -460,6 +458,8 @@ class RobotEnv(gym.Env):
         reward = _reward / (i + 1)
         # print("---Finding state---")
         self._observation = self.get_extended_observation()
+        self.comp_times.append(self.current_timestep_time)
+        self.current_timestep_time = 0
 
         return np.array(self._observation), reward, done, {}
 

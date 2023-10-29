@@ -14,6 +14,7 @@ import time
 n_trials = 1
 seed = 15
 dtype = "float32"
+policy_calc_times = []
 
 env_wrapper = FrankaFullRMPWrapper(dtype=dtype)
 rmp_graph = RobotRMPGraph(robot_name="franka", dtype=dtype, timed=True)
@@ -62,6 +63,7 @@ try:
     env.seed(seed)
     # state = env.reset()
     # action = policy(state)
+    first = True
 
     for n in range(n_trials):
         print("Resetting state")
@@ -74,15 +76,22 @@ try:
             action = policy(state,env)
             t_end = time.time()
             # print("Time taken to get the policy", t_end-t_start)
+            if not first:
+                policy_calc_times.append(t_end-t_start)
+            else:
+                first_policy_eval_time = t_end-t_start
             # print("Doing env.step(action)")
             state, reward, done, _ = env.step(action)
             if done:
                 break
             t_end2 = time.time()
             # print("Time step takes", t_end2-t_start)
+            # print("step_action_times", env.comp_times)
+            # print("policy_calc_times", policy_calc_times)
+            first = False
 except KeyboardInterrupt:
     print("\nInterupted")
-    env.camera.plot_error()
+    # env.camera.plot_error(env.comp_times, policy_calc_times, first_policy_eval_time)
 
-env.camera.plot_error()
+env.camera.plot_error(env.comp_times, policy_calc_times, first_policy_eval_time)
 

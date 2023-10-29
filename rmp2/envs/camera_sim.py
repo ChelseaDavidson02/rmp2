@@ -182,6 +182,10 @@ class Camera():
         self.sim_running = False
         self.y_distances = []
         self.goal_distance = 0
+
+        # Computation times
+        self.camera_updates_time = []
+        self.max_obs_num = None
         
     
     def setup_point_cloud(self, robot, goal_uid, distance, voxel_size, time_step):
@@ -227,12 +231,14 @@ class Camera():
 
     def activate_sim(self):
         self.sim_running = True
+        self.camera_updates_time = []
         
-    def step_sensing(self, current_y_distance):
+    def step_sensing(self, current_y_distance, max_obstacle_num = None):
         """
         Captures camera data in the current pybullet environment, plots the point cloud and returns points 
         representing the point cloud of the current environment. 
         """
+        self.max_obs_num = max_obstacle_num
         t0 = time.time()
         # self.bullet_client.changeVisualShape(self.goal_uid, -1, rgbaColor=[0, 0, 0, 0])
         imgs = self.update_camera()
@@ -242,23 +248,26 @@ class Camera():
         t2 = time.time()
         points = self.restrict_ROI(all_points)
         downsampled_points = self.downsample_point_cloud(points, self.voxel_size)
+        final_points = self.restrict_point_num(max_obstacle_num, downsampled_points)
         t3 = time.time()
         eef_info = p.getLinkState(self.robot.robot_uid, self.robot.eef_uid, computeLinkVelocity=1, computeForwardKinematics=1)
         t4 = time.time()
         goal_position = self.get_goal_point(points, eef_info[0], self.distance, current_y_distance)
         t5 = time.time()
+
         
         # print("Time taken updating the camera: ", t1-t0)
         # print("Time taken getting point cloud: ", t2-t1)
         # print("Time taken downsampling: ", t3-t2)
         # print("Time taken getting goal point: ", t5-t4)
         # print("Total time: ", t4-t0)
+        self.camera_updates_time.append((t5-t4) + (t3-t2))
 
         # print("Total points", len(all_points))
         # print("ROI points", len(points))
         # print("downsampled points", len(downsampled_points))
         
-        return downsampled_points, goal_position
+        return final_points, goal_position
             
 
     def update_camera(self):
@@ -346,7 +355,19 @@ class Camera():
         centroids = np.array([group.mean(axis=0) for group in voxel_groups])
 
         return centroids
-        
+
+    def restrict_point_num(self, max_obstacle_num, points):
+        if max_obstacle_num is not None:
+            if len(points) > max_obstacle_num: # if we have too many points, randomly sample
+                randomly_sampled_indices = np.random.choice(points.shape[0], size=max_obstacle_num, replace=False)
+                points = points[randomly_sampled_indices] 
+            elif len(points) < max_obstacle_num:# if we have too little points, randomly duplicate
+                random_indices = np.random.choice(len(points), size=max_obstacle_num-len(points), replace=True)
+                duplicated_points = points[random_indices]
+
+                # Stack the duplicated points
+                points = np.vstack((points, duplicated_points))
+        return points
     
     def plot_point_cloud_dynamic(self, points, goal_point):
         """
@@ -446,7 +467,7 @@ class Camera():
         # Return the goal point
         return goal_point
 
-    def plot_error(self):
+    def plot_error(self, step_comp_times, policy_calc_times, first_policy_eval_time):
         plt.figure()
         # time_step_array = np.arange(0, len(self.error_values))
         # monorail_velocity = 1.0
@@ -455,9 +476,20 @@ class Camera():
         # velocity = self.time_step * monorail_velocity
         distance_array = np.array(self.y_distances)
         error_values = np.array(self.error_values)
+        camera_time_values = np.array(self.camera_updates_time)
+        policy_time_values = np.array(policy_calc_times)
+        step_time_values = np.array(step_comp_times)
         data = np.column_stack((distance_array, error_values))
         # Store data in case want to change plots later
-        np.savetxt('demo_data/error_data_0.2_0.2.csv', data, delimiter=",", header="x,y", comments="")
+        np.savetxt('voxel_data/error_data_0.06.csv', data, delimiter=",", header="distance,error", comments="")
+
+        cam_time_av = np.average(camera_time_values)
+        policy_time_av = np.average(policy_time_values)
+        step_time_av = np.average(step_time_values)
+        total_average_time = cam_time_av + policy_time_av + step_time_av
+
+        time_data = np.column_stack((self.max_obs_num , first_policy_eval_time, cam_time_av, policy_time_av, step_time_av, total_average_time))
+        np.savetxt('voxel_data/time_data_0.06.csv', time_data, delimiter=",", header="obstacle_num, first_policy_eval_time, camera_time_av, policy_time_av, step_time_av, total_time_step_average", comments="")
         
         percent_array = np.full(error_values.shape, 100/self.goal_distance)
         percentage_error_values =  error_values * percent_array
@@ -465,7 +497,7 @@ class Camera():
         plt.plot(distance_array, percentage_error_values)
         plt.xlabel('Y distance')
         plt.ylabel('Percentage error')
-        plt.title('Error Over Time - Monorail velocity of 0.2m/s and goal distance of 0.2m')
+        plt.title('Error Over Time - Voxel size of 0.06m')
         plt.grid(True, 'both')
         # Add text to the bottom center
         average_error = np.average(self.error_values)
@@ -473,5 +505,17 @@ class Camera():
         text = "Average percentage error: %.3f%%" % (average_percentage_error)
         plt.text(0.88, -0.1, text, horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes)
 
-        plt.savefig('demo_data/error_plot_0.2_0.2.png')
+        plt.savefig('voxel_data/error_plot_0.06.png')
+
+        print("-------------------END OF TEST LOG-------------------")
+        print("Obstacle number:", self.max_obs_num)
+        print("First policy evaluation time - need to build RMP-tree:", first_policy_eval_time)
+        print("Average camera update time:",  cam_time_av)
+        print("Average policy eval time:",  policy_time_av)
+        print("Average step action time:",  step_time_av)
+        print("Total average time", total_average_time)
+        print("-----------------------------------------------------")
+
+
+        
         
