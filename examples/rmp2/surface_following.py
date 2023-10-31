@@ -9,15 +9,24 @@ from rmp2.utils.env_wrappers import FrankaFullRMPWrapper
 import tensorflow as tf
 from math import pi
 import time
+import sys
 
+voxel_size=0.02
+filename_suffix = 'default'
+output_folder='voxel_data_trials'
 
+if(len(sys.argv)==3):
+    voxel_size =  float(sys.argv[1])
+    filename_suffix = sys.argv[2]
+    print(f"Running with voxel_size={voxel_size} and filename={filename_suffix}")
+ 
 n_trials = 1
 seed = 15
 dtype = "float32"
 policy_calc_times = []
 
 env_wrapper = FrankaFullRMPWrapper(dtype=dtype)
-rmp_graph = RobotRMPGraph(robot_name="franka", dtype=dtype, timed=True)
+rmp_graph = RobotRMPGraph(robot_name="franka", dtype=dtype, timed=(True,output_folder,filename_suffix))
 
 config = {
     "goal": [0.5, -0.5, 0.5],
@@ -36,7 +45,7 @@ config = {
     "simulating_point_cloud": True,
     "plotting_point_cloud": True,
     "plotting_point_cloud_results": True,
-    "point_cloud_radius": 0.03,
+    "point_cloud_radius": voxel_size/2,
     "goal_distance_from_surface": 0.20,
     "env_mode": 'cylinder_combo',
     "initial_collision_buffer": 0.0,
@@ -60,6 +69,9 @@ def policy(state,env):
 
 try:
     env = FrankaEnvSF(config)
+    env.camera.figure_title=f'Voxel size of {voxel_size}m'
+    env.camera.filename_suffix=filename_suffix
+    env.camera.output_folder=output_folder
     env.seed(seed)
     # state = env.reset()
     # action = policy(state)

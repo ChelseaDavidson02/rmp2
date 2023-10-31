@@ -186,7 +186,12 @@ class Camera():
         # Computation times
         self.camera_updates_time = []
         self.max_obs_num = None
-        
+
+        # Filenames
+        self.filename_suffix = "default"
+        self.output_folder="voxel_data_trials"
+        self.figure_title="Title"
+        # 'voxel_data/time_data_0.12_t2.csv'
     
     def setup_point_cloud(self, robot, goal_uid, distance, voxel_size, time_step):
         """
@@ -481,7 +486,7 @@ class Camera():
         step_time_values = np.array(step_comp_times)
         data = np.column_stack((distance_array, error_values))
         # Store data in case want to change plots later
-        np.savetxt('voxel_data/error_data_0.06.csv', data, delimiter=",", header="distance,error", comments="")
+        np.savetxt(f'{self.output_folder}/error_data_{self.filename_suffix}.csv', data, delimiter=",", header="distance,error", comments="")
 
         cam_time_av = np.average(camera_time_values)
         policy_time_av = np.average(policy_time_values)
@@ -489,7 +494,7 @@ class Camera():
         total_average_time = cam_time_av + policy_time_av + step_time_av
 
         time_data = np.column_stack((self.max_obs_num , first_policy_eval_time, cam_time_av, policy_time_av, step_time_av, total_average_time))
-        np.savetxt('voxel_data/time_data_0.06.csv', time_data, delimiter=",", header="obstacle_num, first_policy_eval_time, camera_time_av, policy_time_av, step_time_av, total_time_step_average", comments="")
+        np.savetxt(f'{self.output_folder}/time_data_{self.filename_suffix}.csv', time_data, delimiter=",", header="obstacle_num, first_policy_eval_time, camera_time_av, policy_time_av, step_time_av, total_time_step_average", comments="")
         
         percent_array = np.full(error_values.shape, 100/self.goal_distance)
         percentage_error_values =  error_values * percent_array
@@ -497,7 +502,7 @@ class Camera():
         plt.plot(distance_array, percentage_error_values)
         plt.xlabel('Y distance')
         plt.ylabel('Percentage error')
-        plt.title('Error Over Time - Voxel size of 0.06m')
+        plt.title(f'Error Over Time - {self.figure_title}')
         plt.grid(True, 'both')
         # Add text to the bottom center
         average_error = np.average(self.error_values)
@@ -505,7 +510,7 @@ class Camera():
         text = "Average percentage error: %.3f%%" % (average_percentage_error)
         plt.text(0.88, -0.1, text, horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes)
 
-        plt.savefig('voxel_data/error_plot_0.06.png')
+        plt.savefig(f'{self.output_folder}/error_plot_{self.filename_suffix}.png')
 
         print("-------------------END OF TEST LOG-------------------")
         print("Obstacle number:", self.max_obs_num)
