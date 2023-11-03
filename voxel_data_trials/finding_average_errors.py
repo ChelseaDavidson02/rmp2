@@ -45,4 +45,7 @@ for voxl in voxel_size:
     average_voxel_p_error =  np.average(voxl_percentage_errors)
     percentage_errors[voxl] = average_voxel_p_error
 
-print(percentage_errors)
+errors = []
+for key in percentage_errors.keys():
+    errors.append(percentage_errors[key])
+print(f"percentage_errors = {errors};")
