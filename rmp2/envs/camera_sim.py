@@ -516,6 +516,27 @@ class Camera():
         # Save the image to a file
         pil_image.save(f"data/random_trials/output_image_{self.filename_suffix}.png")
 
+    def update_error(self, eef_pos, obs_uids, current_y_distance):
+        "Potential helper function to find the error - not used currently"
+        if self.sim_running:
+            min_distance = float('inf')
+            closest_point = None
+            
+            for uid in obs_uids:
+                results = self.bullet_client.getClosestPoints(bodyA=self.robot.robot_uid, bodyB=uid, linkIndexA=6, distance=5.0)
+                print("RESULTS", results)
+                if len(results) > 0:
+                    point = results[0][6]
+                    dist = results[0][8]
+                    if dist<min_distance:
+                        min_distance = dist
+                        closest_point = point
+        
+            self.bullet_client.addUserDebugLine(closest_point, eef_pos, lineColorRGB=[0, 0, 1])
+            print("min distnace", min_distance)
+            error = abs(self.goal_distance - min_distance)
+            self.error_values.append(error)
+            self.y_distances.append(current_y_distance)
 
     def plot_error(self, step_comp_times, policy_calc_times, first_policy_eval_time):
         plt.figure()
