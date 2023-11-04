@@ -11,11 +11,11 @@ from math import pi
 import time
 import sys
 
-voxel_size=0.04
+voxel_size=0.05
 monorail_velocity_y = 0.2
-goal_distance = 0.2
-filename_suffix = 'default3'
-output_folder='data/random_trials'
+goal_distance = 0.5
+filename_suffix = '0.5_final'
+output_folder='data/baseline_data'
 
 if(len(sys.argv)==5):
     voxel_size =  float(sys.argv[1])
@@ -51,7 +51,7 @@ config = {
     "plotting_point_cloud_results": True,
     "point_cloud_radius": voxel_size/2,
     "goal_distance_from_surface": goal_distance,
-    "env_mode": 'cylinder_random',
+    "env_mode": 'cylinder_combo',
     "initial_collision_buffer": 0.0,
     "initial_joint_limit_buffer": 0.0,
     "initial_goal_distance_min": 0.0, 

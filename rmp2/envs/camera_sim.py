@@ -180,12 +180,12 @@ class Camera():
         self.goal_line_ID = None
         self.ideal_pose = None
         self.iteration = 0
-        self.distance = None
         self.voxel_size = None
         self.error_values = []
         self.sim_running = False
         self.y_distances = []
         self.goal_distance = 0
+        self.distances_from_surface = []
 
         # Computation times
         self.camera_updates_time = []
@@ -197,14 +197,14 @@ class Camera():
         self.figure_title="Title"
         # 'voxel_data/time_data_0.12_t2.csv'
     
-    def setup_point_cloud(self, robot, goal_uid, distance, voxel_size, time_step):
+    def setup_point_cloud(self, robot, goal_uid, goal_distance, voxel_size, time_step):
         """
         Sets up the plot used to display the point cloud
         """
         # Store which robot is in the sim
         self.robot = robot
         self.goal_uid = goal_uid
-        self.distance = distance
+        self.goal_distance = goal_distance
         self.voxel_size = voxel_size
         self.time_step = time_step
         
@@ -261,7 +261,7 @@ class Camera():
         t3 = time.time()
         eef_info = p.getLinkState(self.robot.robot_uid, self.robot.eef_uid, computeLinkVelocity=1, computeForwardKinematics=1)
         t4 = time.time()
-        goal_position = self.get_goal_point(points, eef_info[0], self.distance, current_y_distance)
+        goal_position = self.get_goal_point(points, eef_info[0], current_y_distance)
         t5 = time.time()
 
         
@@ -291,7 +291,7 @@ class Camera():
                                 self.view_matrix,
                                 self.projection_matrix, shadow=True,
                                 renderer=self.bullet_client.ER_BULLET_HARDWARE_OPENGL)
-        self.bullet_client.changeVisualShape(self.goal_uid, -1, rgbaColor=[0, 1, 0, 1])
+        # self.bullet_client.changeVisualShape(self.goal_uid, -1, rgbaColor=[0, 1, 0, 1])
         
         return imgs
     
@@ -392,8 +392,7 @@ class Camera():
         t1 = time.time()
         # print("Time taken plotting: ", t1-t0)
         
-    def get_goal_point(self, points, eef_pos, distance, current_y_distance):
-        self.goal_distance = distance
+    def get_goal_point(self, points, eef_pos, current_y_distance):
         # Remove previous line ID of goal
         # if self.goal_line_ID is not None:
         #     self.bullet_client.removeUserDebugItem(self.goal_line_ID)
@@ -420,15 +419,16 @@ class Camera():
         # Calculate the unit vector by dividing the vector by its length
         unit_vector = vector / vector_length
         
-        goal_point = closest_point - (unit_vector*distance) 
+        goal_point = closest_point - (unit_vector*self.goal_distance) 
 
-        # # Adding where the path is
-        # self.bullet_client.addUserDebugLine([goal_point[0], goal_point[1]+(6.0 - current_y_distance), goal_point[2]], [goal_point[0], goal_point[1] +(6.0 - current_y_distance), goal_point[2] + 0.02], lineColorRGB=[0, 0, 1], lineWidth=2.0, parentObjectUniqueId=-1, parentLinkIndex=-1, lifeTime=0)
-        # self.bullet_client.addUserDebugLine([eef_location[0], eef_location[1]+(6.0 - current_y_distance), eef_location[2]], [eef_location[0], eef_location[1] +(6.0 - current_y_distance), eef_location[2] + 0.02], lineColorRGB=[1, 0, 0], lineWidth=2.0, parentObjectUniqueId=-1, parentLinkIndex=-1, lifeTime=0)
+        # Adding where the path is
+        self.bullet_client.addUserDebugLine([goal_point[0], goal_point[1]+(6.0 - current_y_distance), goal_point[2]], [goal_point[0], goal_point[1] +(6.0 - current_y_distance), goal_point[2] + 0.02], lineColorRGB=[0, 0, 1], lineWidth=2.0, parentObjectUniqueId=-1, parentLinkIndex=-1, lifeTime=0)
+        self.bullet_client.addUserDebugLine([eef_location[0], eef_location[1]+(6.0 - current_y_distance), eef_location[2]], [eef_location[0], eef_location[1] +(6.0 - current_y_distance), eef_location[2] + 0.02], lineColorRGB=[1, 0, 0], lineWidth=2.0, parentObjectUniqueId=-1, parentLinkIndex=-1, lifeTime=0)
 
         # Calculate and store the error:
         if self.sim_running:
             distance_from_surface = np.linalg.norm(closest_point - eef_location)
+            self.distances_from_surface.append(distance_from_surface)
             # print("Distance:", distance_from_surface)
             error = float(abs(abs(distance_from_surface) - self.goal_distance))
             # print("error:", error)
@@ -544,7 +544,7 @@ class Camera():
         # monorail_velocity = 1.0
         # goal_distance = self.go
 
-        # velocity = self.time_step * monorail_velocity
+        # Store error data
         distance_array = np.array(self.y_distances)
         error_values = np.array(self.error_values)
         camera_time_values = np.array(self.camera_updates_time)
@@ -553,6 +553,11 @@ class Camera():
         data = np.column_stack((distance_array, error_values))
         # Store data in case want to change plots later
         np.savetxt(f'{self.output_folder}/error_data_{self.filename_suffix}.csv', data, delimiter=",", header="distance,error", comments="")
+
+        # Store distance data
+        surface_dis_data = np.array(self.distances_from_surface)
+        data = np.column_stack((distance_array, surface_dis_data))
+        np.savetxt(f'{self.output_folder}/surface_dist_data_{self.filename_suffix}.csv', data, delimiter=",", header="distance,dist_from_surface", comments="")
 
         cam_time_av = np.average(camera_time_values)
         policy_time_av = np.average(policy_time_values)

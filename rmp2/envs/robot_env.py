@@ -271,7 +271,7 @@ class RobotEnv(gym.Env):
             
             # set the current obstacles to be a sphere parameterisation of the environment found with the camera
             if self.simulating_point_cloud:
-                self.camera.setup_point_cloud(robot=self._robot, goal_uid=self.goal_uid, distance=self.goal_distance_from_surface, voxel_size=self.point_cloud_radius*2, time_step = self._time_step)
+                self.camera.setup_point_cloud(robot=self._robot, goal_uid=self.goal_uid, goal_distance=self.goal_distance_from_surface, voxel_size=self.point_cloud_radius*2, time_step = self._time_step)
                 
                 # Find point cloud and goal point
                 points, goal_point = self.camera.step_sensing(self.current_y_distance)
@@ -523,6 +523,9 @@ class RobotEnv(gym.Env):
                 return True
         if self.plotting_point_cloud_results:
             if self.current_y_distance >=6.0:
+                i = 0
+                while i < 10000:
+                    i += 1
                 print("------------ Finished test ------------")
                 self.terminated = True
                 return True
