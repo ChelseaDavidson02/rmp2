@@ -200,33 +200,33 @@ class FrankaEnvSF(RobotEnv):
         obstacle_uids = []
         
         # Adding big tunnel
-        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.95,0,1.1], radius = 0.5))
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.95,0,0.95], radius = 0.5))
         
         # Adding line along tunnel
-        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.55,0,0.8], radius = 0.04, color=obstacle_colour))
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.55,0,0.65], radius = 0.04, color=obstacle_colour))
         
         # Adding ball
-        obstacle_uids.append(add_obstacle_ball(self._p, center=[0.5, -0.5, 0.9], radius=0.2, color=obstacle_colour))
+        obstacle_uids.append(add_obstacle_ball(self._p, center=[0.5, -0.5, 0.75], radius=0.2, color=obstacle_colour))
         
         # Adding short cylinder beside body obstacle
-        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.95, -0.7, 1.1], radius=0.6, length = 0.1, color=obstacle_colour))
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.95, -0.7, 0.95], radius=0.6, length = 0.1, color=obstacle_colour))
         
         # Adding body obstacle
-        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -1.4, 1.0], size=[0.3, 0.2, 0.1], color=obstacle_colour))
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.5, -1.4, 0.85], size=[0.3, 0.2, 0.1], color=obstacle_colour))
         
         
         # Adding eef obstacle
         s = 0.2
-        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.55, -1.8, 1.1], size=[s, s, s], color=obstacle_colour))
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.55, -1.8, 0.95], size=[s, s, s], color=obstacle_colour))
 
         # Adding short cylinder beside eef obstacle
-        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.95, -2.6, 1.1], radius=0.6, length = 0.1, color=obstacle_colour))
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.95, -2.6, 0.95], radius=0.6, length = 0.1, color=obstacle_colour))
         
         # Adding small cylinder
-        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.35, -3.4, 1.0], radius=0.1, length = 0.4, color=obstacle_colour))
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.35, -3.4, 0.85], radius=0.1, length = 0.4, color=obstacle_colour))
         
         # Adding large object beside small cylinder
-        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.4, -4.4, 1.2], size=[0.2, 0.2, 0.6], color=obstacle_colour))
+        obstacle_uids.append(add_obstacle_cuboid(self._p, center=[0.4, -4.4, 1.05], size=[0.2, 0.2, 0.6], color=obstacle_colour))
         
         return current_obstacles, obstacle_uids
     
