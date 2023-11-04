@@ -11,13 +11,17 @@ from math import pi
 import time
 import sys
 
-voxel_size=0.02
-filename_suffix = 'default'
-output_folder='voxel_data_trials'
+voxel_size=0.04
+monorail_velocity_y = 0.2
+goal_distance = 0.2
+filename_suffix = 'default3'
+output_folder='data/random_trials'
 
-if(len(sys.argv)==3):
+if(len(sys.argv)==5):
     voxel_size =  float(sys.argv[1])
     filename_suffix = sys.argv[2]
+    monorail_velocity_y = float(sys.argv[3])
+    goal_distance = float(sys.argv[4])
     print(f"Running with voxel_size={voxel_size} and filename={filename_suffix}")
  
 n_trials = 1
@@ -41,13 +45,13 @@ config = {
     "waypoints": [[0.3, -0.2, 0.7], [0.3, -0.225, 0.7],[0.3, -0.25, 0.7], [0.3, -0.275, 0.7],[0.3, -0.3, 0.7], [0.3, -0.325, 0.7],[0.3, -0.35, 0.7], [0.3, -0.375, 0.7],[0.3, -0.4, 0.7], [0.3, -0.425, 0.7],[0.3, -0.45, 0.7],[0.3, -0.475, 0.7],[0.3, -0.5, 0.7]],
     "waypoint_reaching": False,
     "dynamic_env": True,
-    "monorail_vel": [0,0.2,0],
+    "monorail_vel": [0,monorail_velocity_y,0],
     "simulating_point_cloud": True,
     "plotting_point_cloud": True,
     "plotting_point_cloud_results": True,
     "point_cloud_radius": voxel_size/2,
-    "goal_distance_from_surface": 0.20,
-    "env_mode": 'cylinder_combo',
+    "goal_distance_from_surface": goal_distance,
+    "env_mode": 'cylinder_random',
     "initial_collision_buffer": 0.0,
     "initial_joint_limit_buffer": 0.0,
     "initial_goal_distance_min": 0.0, 

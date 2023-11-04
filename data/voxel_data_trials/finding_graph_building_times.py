@@ -16,20 +16,7 @@ for voxl in voxel_size:
 
     voxel_times[voxl] = voxel_map
 
-path = f"voxel_data_trials/rmp_timing.txt"
-# loaded_data = np.loadtxt(path, delimiter=",", skiprows=1)
-
-# voxel_map = {}
-# for row in range(len(loaded_data[:, 0])):
-#     name = loaded_data[row, 0]
-#     vox_sz = name[5:8]
-#     print(vox_sz)
-#     voxel_map = voxel_times[vox_sz]
-#     voxel_map['forward_pass'].append(loaded_data[row, 1])
-#     voxel_map['rmp_evaluation'].append(loaded_data[row, 2])
-#     voxel_map['backward_pass'].append(loaded_data[row, 3])
-#     voxel_map['resolve'].append(loaded_data[row, 4])
-
+path = f"data/voxel_data_trials/rmp_timing.txt"
 voxel_map = {}
 
 with open(path, 'r') as file:

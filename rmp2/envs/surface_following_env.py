@@ -83,7 +83,8 @@ class FrankaEnvSF(RobotEnv):
         return current_goal, goal_uid
 
     def _generate_random_obstacles(self):
-        obstacle_colour = [0.8, 0.0, 0.0, 1]
+        # obstacle_colour = [0.8, 0.0, 0.0, 1]
+        obstacle_colour = [0.5, 0.5, 0.5, 1]
         if self.env_mode == 'single_body':
             return self.generate_single_body_obst(obstacle_colour)
         elif self.env_mode == 'single_eef':
@@ -316,26 +317,33 @@ class FrankaEnvSF(RobotEnv):
         obstacle_uids = []
         
         # Adding big tunnel
-        obstacle_uids.append(add_obstacle_cylinder(self._p, [1.5,0,1.2], radius=1))
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.95,0,1.1], radius = 0.5))
+
+        # Adding welding
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.55,0,0.8], radius = 0.04, color=obstacle_colour))
+
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.95, -0.7, 1.1], radius=0.6, length = 0.1, color=obstacle_colour))
+        obstacle_uids.append(add_obstacle_cylinder(self._p, center=[0.95, -2.6, 1.1], radius=0.6, length = 0.1, color=obstacle_colour))
 
         # Adding cubes
-        for i in range(10):
-            # randomly scatter cubes along the tunnel wall
-            center = [random.uniform(0.5,0.6),random.uniform(-10, 0), random.uniform(0.5, 1.7)]
-            s = random.uniform(0.05, 0.2) # half side length
-            obstacle_uids.append(add_obstacle_cuboid(self._p, center, size=[s, s, s], color=obstacle_colour))
+        for i in range(5):
+            # randomly scatter rectangles along the tunnel wall
+            center = [random.uniform(0.35,0.45),random.uniform(-6, -0.5), random.uniform(0.8, 1.1)]
+            s1 = random.uniform(0.1, 0.2) # half side length
+            s2 = random.uniform(0.1, 0.2) # half side length
+            obstacle_uids.append(add_obstacle_cuboid(self._p, center, size=[s1, s2, s1], color=obstacle_colour))
         
-        for i in range(10):
+        for i in range(5):
             # randomly scatter cubes along the tunnel wall
-            center = [random.uniform(0.5,0.6),random.uniform(-10, 0), random.uniform(0.5, 1.7)]
-            s = random.uniform(0.05, 0.2) # half side length
+            center = [random.uniform(0.35,0.45),random.uniform(-6, -0.5), random.uniform(0.8, 1.1)]
+            s = random.uniform(0.1, 0.2) # half side length
             obstacle_uids.append(add_obstacle_ball(self._p, center, radius=s, color=obstacle_colour))
 
-        for i in range(10):
+        for i in range(5):
             # randomly scatter cubes along the tunnel wall
-            center = [random.uniform(0.5,0.6),random.uniform(-10, 0), random.uniform(0.5, 1.7)]
+            center = [random.uniform(0.35,0.45),random.uniform(-6, -0.5), random.uniform(0.8, 1.1)]
             s = random.uniform(0.05, 0.2) # half side length
-            l = random.uniform(0.1, 0.2) # half side length
+            l = random.uniform(0.1, 0.4) # half side lengths
             obstacle_uids.append(add_obstacle_cylinder(self._p, center, radius=s, length=l, color=obstacle_colour))
         
 

@@ -15,6 +15,10 @@ from sklearn.neighbors import KDTree
 from scipy.spatial import cKDTree
 import time
 
+from PIL import Image
+import cv2
+
+
 
 
 
@@ -142,7 +146,7 @@ class Camera_Extrinsic():
                         )
         
         #show where the camera is pointing
-        line_ID = p.addUserDebugLine([xA, yA, zA], [xB, yB, zB], lineColorRGB=[0, 0, 1])
+        # line_ID = p.addUserDebugLine([xA, yA, zA], [xB, yB, zB], lineColorRGB=[0, 0, 1])
         
         return view_matrix
     
@@ -265,7 +269,7 @@ class Camera():
         # print("Time taken getting point cloud: ", t2-t1)
         # print("Time taken downsampling: ", t3-t2)
         # print("Time taken getting goal point: ", t5-t4)
-        # print("Total time: ", t4-t0)
+        # print("Total time: ", (t5-t4) + (t3-t2))
         self.camera_updates_time.append((t5-t4) + (t3-t2))
 
         # print("Total points", len(all_points))
@@ -358,7 +362,6 @@ class Camera():
 
         # Calculate the centroid of each voxel
         centroids = np.array([group.mean(axis=0) for group in voxel_groups])
-
         return centroids
 
     def restrict_point_num(self, max_obstacle_num, points):
@@ -392,8 +395,8 @@ class Camera():
     def get_goal_point(self, points, eef_pos, distance, current_y_distance):
         self.goal_distance = distance
         # Remove previous line ID of goal
-        if self.goal_line_ID is not None:
-            self.bullet_client.removeUserDebugItem(self.goal_line_ID)
+        # if self.goal_line_ID is not None:
+        #     self.bullet_client.removeUserDebugItem(self.goal_line_ID)
             
         # Create a kd-tree from your point cloud data
         kdtree = cKDTree(points)
@@ -418,10 +421,17 @@ class Camera():
         unit_vector = vector / vector_length
         
         goal_point = closest_point - (unit_vector*distance) 
-        
+
+        # # Adding where the path is
+        # self.bullet_client.addUserDebugLine([goal_point[0], goal_point[1]+(6.0 - current_y_distance), goal_point[2]], [goal_point[0], goal_point[1] +(6.0 - current_y_distance), goal_point[2] + 0.02], lineColorRGB=[0, 0, 1], lineWidth=2.0, parentObjectUniqueId=-1, parentLinkIndex=-1, lifeTime=0)
+        # self.bullet_client.addUserDebugLine([eef_location[0], eef_location[1]+(6.0 - current_y_distance), eef_location[2]], [eef_location[0], eef_location[1] +(6.0 - current_y_distance), eef_location[2] + 0.02], lineColorRGB=[1, 0, 0], lineWidth=2.0, parentObjectUniqueId=-1, parentLinkIndex=-1, lifeTime=0)
+
         # Calculate and store the error:
         if self.sim_running:
-            error = np.linalg.norm(goal_point - eef_location)
+            distance_from_surface = np.linalg.norm(closest_point - eef_location)
+            # print("Distance:", distance_from_surface)
+            error = float(abs(abs(distance_from_surface) - self.goal_distance))
+            # print("error:", error)
             self.error_values.append(error)
             self.y_distances.append(current_y_distance)
     
@@ -461,16 +471,51 @@ class Camera():
             # Perform the rotation
             unit_vector = np.dot(R_y, unit_vector)
             
-        goal_point = closest_point - (unit_vector*distance) 
+        goal_point = closest_point - (unit_vector*self.goal_distance) 
 
         
-        self.goal_line_ID = p.addUserDebugLine(goal_point, closest_point, lineColorRGB=[0, 1, 0])
+        # self.goal_line_ID = p.addUserDebugLine(goal_point, closest_point, lineColorRGB=[0, 1, 0])
         
         if self.ideal_pose is None:
             self.ideal_pose = goal_point
         
         # Return the goal point
         return goal_point
+    
+    def save_last_img(self):
+        # view_matrix = self.bullet_client.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=[1, 3, 1.6],
+        #                                                         distance=self.cam_extrinsic.cam_dist,
+        #                                                         yaw=0,
+        #                                                         pitch=0,
+        #                                                         roll=0,
+        #                                                         upAxisIndex=2)
+        view_matrix = self.bullet_client.computeViewMatrix(
+                            cameraEyePosition=[-1.0, 3, 3.5],
+                            cameraTargetPosition=[0.9, 3, 1.6],
+                            cameraUpVector=[0, 0, 1.0]
+                        )
+        proj_matrix = self.bullet_client.computeProjectionMatrixFOV(fov=90,
+                                                        aspect=float(960) / 720,
+                                                        nearVal=0.1,
+                                                        farVal=100.0)
+        imgs = self.bullet_client.getCameraImage(width=960,
+                                                    height=720,
+                                                    viewMatrix=view_matrix,
+                                                    projectionMatrix=proj_matrix,
+                                                    renderer=self.bullet_client.ER_BULLET_HARDWARE_OPENGL)
+        rgb_image = imgs[2]
+
+        pil_image = Image.fromarray(rgb_image)
+
+        # Create an OpenCV image from the RGB data
+        opencv_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2BGR)
+
+        # Save the image to a file
+        # cv2.imwrite("data/random_trials/output_image_cv.png", opencv_image)
+
+        # Save the image to a file
+        pil_image.save(f"data/random_trials/output_image_{self.filename_suffix}.png")
+
 
     def plot_error(self, step_comp_times, policy_calc_times, first_policy_eval_time):
         plt.figure()
@@ -511,6 +556,8 @@ class Camera():
         plt.text(0.88, -0.1, text, horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes)
 
         plt.savefig(f'{self.output_folder}/error_plot_{self.filename_suffix}.png')
+
+        self.save_last_img()
 
         print("-------------------END OF TEST LOG-------------------")
         print("Obstacle number:", self.max_obs_num)

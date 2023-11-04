@@ -1,27 +1,18 @@
-python examples/rmp2/surface_following.py 0.160 File_160c
-python examples/rmp2/surface_following.py 0.160 File_160b
-python examples/rmp2/surface_following.py 0.160 File_160a
-python examples/rmp2/surface_following.py 0.140 File_140c
-python examples/rmp2/surface_following.py 0.140 File_140b
-python examples/rmp2/surface_following.py 0.140 File_140a
-python examples/rmp2/surface_following.py 0.120 File_120c
-python examples/rmp2/surface_following.py 0.120 File_120b
-python examples/rmp2/surface_following.py 0.120 File_120a
-python examples/rmp2/surface_following.py 0.100 File_100c
-python examples/rmp2/surface_following.py 0.100 File_100b
-python examples/rmp2/surface_following.py 0.100 File_100a
-python examples/rmp2/surface_following.py 0.080 File_080c
-python examples/rmp2/surface_following.py 0.080 File_080b
-python examples/rmp2/surface_following.py 0.080 File_080a
-python examples/rmp2/surface_following.py 0.060 File_060c
-python examples/rmp2/surface_following.py 0.060 File_060b
-python examples/rmp2/surface_following.py 0.060 File_060a
-python examples/rmp2/surface_following.py 0.040 File_040c
-python examples/rmp2/surface_following.py 0.040 File_040b
-python examples/rmp2/surface_following.py 0.040 File_040a
-python examples/rmp2/surface_following.py 0.020 File_020c
-python examples/rmp2/surface_following.py 0.020 File_020b
-python examples/rmp2/surface_following.py 0.020 File_020a
-python examples/rmp2/surface_following.py 0.001 File_001c
-python examples/rmp2/surface_following.py 0.001 File_001b
-python examples/rmp2/surface_following.py 0.001 File_001a
+python examples/rmp2/surface_following.py 0.08 File_0.08_0.40_0.40_t2 0.40 0.40
+python examples/rmp2/surface_following.py 0.08 File_0.08_0.40_0.30_t2 0.40 0.30
+python examples/rmp2/surface_following.py 0.08 File_0.08_0.40_0.20_t2 0.40 0.20
+python examples/rmp2/surface_following.py 0.08 File_0.08_0.20_0.40_t2 0.20 0.40
+python examples/rmp2/surface_following.py 0.08 File_0.08_0.20_0.30_t2 0.20 0.30
+python examples/rmp2/surface_following.py 0.08 File_0.08_0.20_0.20_t2 0.20 0.20
+python examples/rmp2/surface_following.py 0.06 File_0.06_0.40_0.40_t2 0.40 0.40
+python examples/rmp2/surface_following.py 0.06 File_0.06_0.40_0.30_t2 0.40 0.30
+python examples/rmp2/surface_following.py 0.06 File_0.06_0.40_0.20_t2 0.40 0.20
+python examples/rmp2/surface_following.py 0.06 File_0.06_0.20_0.40_t2 0.20 0.40
+python examples/rmp2/surface_following.py 0.06 File_0.06_0.20_0.30_t2 0.20 0.30
+python examples/rmp2/surface_following.py 0.06 File_0.06_0.20_0.20_t2 0.20 0.20
+python examples/rmp2/surface_following.py 0.04 File_0.04_0.40_0.40_t2 0.40 0.40
+python examples/rmp2/surface_following.py 0.04 File_0.04_0.40_0.30_t2 0.40 0.30
+python examples/rmp2/surface_following.py 0.04 File_0.04_0.40_0.20_t2 0.40 0.20
+python examples/rmp2/surface_following.py 0.04 File_0.04_0.20_0.40_t2 0.20 0.40
+python examples/rmp2/surface_following.py 0.04 File_0.04_0.20_0.30_t2 0.20 0.30
+python examples/rmp2/surface_following.py 0.04 File_0.04_0.20_0.20_t2 0.20 0.20

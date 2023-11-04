@@ -19,7 +19,7 @@ for voxl in voxel_size:
     voxel_map = {}
 
     for trial in trials:
-        path = f"voxel_data_trials/time_data_File_{voxl}{trial}.csv"
+        path = f"data/voxel_data_trials/time_data_File_{voxl}{trial}.csv"
         try:
             loaded_data = np.loadtxt(path, delimiter=",", skiprows=1)
         except:

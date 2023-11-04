@@ -10,7 +10,7 @@ percentage_errors = {}
 for voxl in voxel_size:
     voxl_percentage_errors = []
     for trial in trials:
-        path = f"voxel_data_trials/error_data_File_{voxl}{trial}.csv"
+        path = f"data/voxel_data_trials/error_data_File_{voxl}{trial}.csv"
         try:
             loaded_data = np.loadtxt(path, delimiter=",", skiprows=1)
         except:
