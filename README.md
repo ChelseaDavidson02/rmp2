@@ -6,7 +6,7 @@ Download the rmp2 zip file or run:
 ```
 git clone https://github.com/ChelseaDavidson02/rmp2.git
 ```
-s
+
 ### System integration
 This code operates in Ubuntu and must therefore be run on an Ubuntu device or in WSL on Windows Devices.
 
