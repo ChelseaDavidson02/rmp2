@@ -12,18 +12,18 @@ This code operates in Ubuntu and must therefore be run on an Ubuntu device or in
 
 Ensure that a virtual environment manager is installed. The following code assumes anaconda3 is used.
 
-Setup a virtual environment by running:
+Setup a virtual environment by running the following from within the rmp2 directory:
 ```
 conda env create -f environment.yml
 ```
 
-To activate the environment and export the python path, run:
+To activate the environment and export the python path, run the following from within the rmp2 directory:
 ```
 . startup.sh
 ```
 
 ### Surface following code
-To run the surface following algorithm in the simulated environment, run:
+To run the surface following algorithm in the simulated environment, run the following from within the rmp2 directory:
 ```
 python examples/rmp2/surface_following.py 
 ```
