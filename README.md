@@ -1,12 +1,12 @@
 # Online Surface Following Algorthm using Riemannian Motion Policies
 Code adaped from the RMP2 code to enable surface following in a dynamic environment. The README for the original code can be found at the bottom of this file.
 
-### Instalation 
+### Installation 
 Download the rmp2 zip file or run:
 ```
 git clone https://github.com/ChelseaDavidson02/rmp2.git
 ```
-
+s
 ### System integration
 This code operates in Ubuntu and must therefore be run on an Ubuntu device or in WSL on Windows Devices.
 
