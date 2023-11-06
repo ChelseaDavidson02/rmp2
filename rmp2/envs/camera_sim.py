@@ -1,10 +1,9 @@
 """
-Uses the config file to find intrinsic parameters.
-Calculates point cloud manually and plots on matplotlib.
-Environemnt is dynamic.
+Contains an intrinsic and extrinsic model of a camera with a camera object that uses these to capture simulated images. 
+Uses the pybullet_sim__cam_config.yaml config file to obtain extrinsic and intrinsic parameters.
+Calculates point cloud and plots it using matplotlib - this is updated at each time step to allow for dynamic environments.
 Increased speed by using voxel sampling.
-Correct."""
-
+"""
 import pybullet as p
 import math
 from math import pi
@@ -31,7 +30,9 @@ class CameraIntrinsic():
             eg. name = 'pybullet_sim_cam' for config file: 'pybullet_sim_cam_config.yaml' (must be located in configs folder)
         width (int): The width in pixels of the image from the camera.
         height(int): The height in pixels of the imgage from the camera.
-        K: The intrinsic camera matrix.
+        fov(int): Field of view in degrees (along x plane)
+        nearVal (int): Position of near plane (camera cannot see points closer than this plane)
+        farVal (int): Position of far plane (camera cannot see points beyond this plane)
     """
 
     def __init__(self, cam_name):
@@ -42,7 +43,6 @@ class CameraIntrinsic():
         self.fy =  None
         self.cx =  None
         self.cy =  None
-        self.fov = None
         self.K = None
         self.fov: None
         self.nearVal: None
@@ -174,34 +174,35 @@ class Camera():
         self.scatter1 = None
         self.scatter2 = None
         
+        # sytem variables 
+        self.ideal_pose = None
+        self.voxel_size = None
+        self.sim_running = False
+        self.goal_distance = 0
+        self.max_obs_num = None
+
         # pybullet sim variables
         self.robot = None
         self.goal_uid = None
         self.goal_line_ID = None
-        self.ideal_pose = None
-        self.iteration = 0
-        self.voxel_size = None
+        
+        # Performance variables
         self.error_values = []
-        self.sim_running = False
         self.y_distances = []
-        self.goal_distance = 0
         self.distances_from_surface = []
-
-        # Computation times
         self.camera_updates_time = []
-        self.max_obs_num = None
+        
 
-        # Filenames
+        # Deafault filenames for saving results
         self.filename_suffix = "default"
-        self.output_folder="voxel_data_trials"
+        self.output_folder="data"
         self.figure_title="Title"
-        # 'voxel_data/time_data_0.12_t2.csv'
     
     def setup_point_cloud(self, robot, goal_uid, goal_distance, voxel_size, time_step):
         """
         Sets up the plot used to display the point cloud
         """
-        # Store which robot is in the sim
+        # Store system parameters
         self.robot = robot
         self.goal_uid = goal_uid
         self.goal_distance = goal_distance
@@ -214,10 +215,10 @@ class Camera():
         
         self.figure = plt.figure()
         
+        # Initialse scatters which are used to display point cloud
         self.ax = self.figure.add_subplot(111, projection='3d')
         self.scatter1 = self.ax.scatter([], [], [], s=66)
         self.scatter2 = self.ax.scatter([], [], [],  c='g', marker='o', s=50, label='Specific Point')
-
 
         self.ax.set_xlabel('X')
         self.ax.set_ylabel('Y')
@@ -232,27 +233,26 @@ class Camera():
         # setting title
         plt.title("Point Cloud", fontsize=20)
         
-        # calculate view and projection matrix - assumes robot doesn't move during sim
+        # calculate view and projection matrix - assumes robot's base doesn't move during sim
         base_pos, base_orn = self.bullet_client.getBasePositionAndOrientation(robot.robot_uid)
 
         self.view_matrix = self.cam_extrinsic.get_view_matrix(base_pos)
         self.projection_matrix = self.cam_intrinsic.get_projection_matrix()
 
     def activate_sim(self):
+        """Informs the camera when the RMP graph has been constructed and the algorithm is online"""
         self.sim_running = True
         self.camera_updates_time = []
         
     def step_sensing(self, current_y_distance, max_obstacle_num = None):
         """
         Captures camera data in the current pybullet environment, plots the point cloud and returns points 
-        representing the point cloud of the current environment. 
+        representing the point cloud of the current environment. Stores computation times required to complete various processes.
         """
         self.max_obs_num = max_obstacle_num
         t0 = time.time()
-        # self.bullet_client.changeVisualShape(self.goal_uid, -1, rgbaColor=[0, 0, 0, 0])
         imgs = self.update_camera()
         t1 = time.time()
-        # self.bullet_client.changeVisualShape(self.goal_uid, -1, rgbaColor=[0, 1, 0, 1])
         all_points = self.get_point_cloud(imgs)
         t2 = time.time()
         points = self.restrict_ROI(all_points)
@@ -282,6 +282,7 @@ class Camera():
     def update_camera(self):
         """
         Returns the simulated images for the current state of the pybullet environment.
+        Makes the target sphere transparent while the image is being taken so it does not appear in the image.
         
         Adapted from https://ai.aioz.io/guides/robotics/2021-05-19-visual-obs-pybullet/ 
         """
@@ -291,7 +292,7 @@ class Camera():
                                 self.view_matrix,
                                 self.projection_matrix, shadow=True,
                                 renderer=self.bullet_client.ER_BULLET_HARDWARE_OPENGL)
-        # self.bullet_client.changeVisualShape(self.goal_uid, -1, rgbaColor=[0, 1, 0, 1])
+        self.bullet_client.changeVisualShape(self.goal_uid, -1, rgbaColor=[0, 1, 0, 1])
         
         return imgs
     
@@ -339,6 +340,9 @@ class Camera():
         return points
     
     def restrict_ROI(self, point_cloud, max_x_distance = 1.0, max_y_distance = 0.5, max_z_distance = 1.1):
+        """
+        Filters out point cloud data that falls outside of the task space.
+        """
         mask = (np.abs(point_cloud[:, 0]) <= max_x_distance) & \
            (np.abs(point_cloud[:, 1]) <= max_y_distance) & \
            (np.abs(point_cloud[:, 2]) <= max_z_distance)
@@ -346,8 +350,16 @@ class Camera():
         return point_cloud[mask]
     
     def downsample_point_cloud(self, points, voxel_size):
+        """
+        Applies voxel downsampling to the point cloud.
+        
+        params:
+            points (array): points contained in the point cloud
+            voxel_size (float): size of voxel when applying voxel downsampling
+
+        """
+
         # Do voxel downsampling - equations recieved from chatGPT - "I have a set of 21,000 points representing a point cloud as an numpy array in python and I want to apply voxel downsampling on these. How do I do that?"
-        # print("OG size", len(points))
 
         grid_indices = (points / voxel_size).astype(int)
 
@@ -364,22 +376,33 @@ class Camera():
         centroids = np.array([group.mean(axis=0) for group in voxel_groups])
         return centroids
 
-    def restrict_point_num(self, max_obstacle_num, points):
-        if max_obstacle_num is not None:
-            if len(points) > max_obstacle_num: # if we have too many points, randomly sample
-                randomly_sampled_indices = np.random.choice(points.shape[0], size=max_obstacle_num, replace=False)
+    
+    def restrict_point_num(self, obstacle_num, points):
+        """
+        Randomly samples or duplicates points in the point cloud to ensure that the number of points are exactly equal to the obstacle number.
+        params:
+            points (array): points contained in the point cloud
+            voxel_size (float): size of voxel when applying voxel downsampling
+        """
+        if obstacle_num is not None:
+            if len(points) > obstacle_num: # if we have too many points, randomly sample
+                randomly_sampled_indices = np.random.choice(points.shape[0], size=obstacle_num, replace=False)
                 points = points[randomly_sampled_indices] 
-            elif len(points) < max_obstacle_num:# if we have too little points, randomly duplicate
-                random_indices = np.random.choice(len(points), size=max_obstacle_num-len(points), replace=True)
+            elif len(points) < obstacle_num:# if we have too little points, randomly duplicate
+                random_indices = np.random.choice(len(points), size=obstacle_num-len(points), replace=True)
                 duplicated_points = points[random_indices]
 
-                # Stack the duplicated points
+                # Stack the duplicated pointss
                 points = np.vstack((points, duplicated_points))
         return points
     
     def plot_point_cloud_dynamic(self, points, goal_point):
         """
         Updates the plot with the given points.
+
+        params:
+            points (array): points contained in the point cloud
+            goal_point (float): current goal point
         """
         t0 = time.time()
         x_coords, y_coords, z_coords = points[:, 0], points[:, 1], points[:, 2]
@@ -388,21 +411,26 @@ class Camera():
         x_cp, y_cp, z_cp = goal_point[0], goal_point[1], goal_point[2]
         self.scatter2._offsets3d = (np.array([x_cp]), np.array([y_cp]), np.array([z_cp]))
 
-        plt.pause(0.0001) #TODO
+        plt.pause(0.0001)
         t1 = time.time()
         # print("Time taken plotting: ", t1-t0)
         
     def get_goal_point(self, points, eef_pos, current_y_distance):
+        """
+        Finds the current goal point in the environment.
+
+        params:
+            points (array): points contained in the point cloud
+            eef_pos (float): current position of the robot's end effector
+            current_y_distance (float): current change in distance from the start of the simulation (how far the obstacles have moved)
+        """
         # Remove previous line ID of goal
-        # if self.goal_line_ID is not None:
-        #     self.bullet_client.removeUserDebugItem(self.goal_line_ID)
+        if self.goal_line_ID is not None:
+            self.bullet_client.removeUserDebugItem(self.goal_line_ID)
             
         # Create a kd-tree from your point cloud data
         kdtree = cKDTree(points)
         eef_location = np.array(eef_pos)
-        
-        # bias = np.array([0,-0.05, 0])
-        # biased_eef_location = np.add(eef_location, bias)
         
         # Query the kd-tree to find the index of the closest point
         closest_point_index = kdtree.query(eef_location)[1]
@@ -421,10 +449,6 @@ class Camera():
         
         goal_point = closest_point - (unit_vector*self.goal_distance) 
 
-        # Adding where the path is
-        self.bullet_client.addUserDebugLine([goal_point[0], goal_point[1]+(6.0 - current_y_distance), goal_point[2]], [goal_point[0], goal_point[1] +(6.0 - current_y_distance), goal_point[2] + 0.02], lineColorRGB=[0, 0, 1], lineWidth=2.0, parentObjectUniqueId=-1, parentLinkIndex=-1, lifeTime=0)
-        self.bullet_client.addUserDebugLine([eef_location[0], eef_location[1]+(6.0 - current_y_distance), eef_location[2]], [eef_location[0], eef_location[1] +(6.0 - current_y_distance), eef_location[2] + 0.02], lineColorRGB=[1, 0, 0], lineWidth=2.0, parentObjectUniqueId=-1, parentLinkIndex=-1, lifeTime=0)
-
         # Calculate and store the error:
         if self.sim_running:
             distance_from_surface = np.linalg.norm(closest_point - eef_location)
@@ -435,7 +459,6 @@ class Camera():
             self.error_values.append(error)
             self.y_distances.append(current_y_distance)
     
-        # Convert the angle to radians
         if self.ideal_pose is not None:
             # To mitigate drift from the obstacle RMP, choose a goal position (there are infinitely many) which would move the robot towards its initial eef position and maintain a smooth trajectory between time steps
             # Find deviation between current eef pos and initial in terms of x and y  
@@ -444,8 +467,6 @@ class Camera():
             angle_deg = 40 * delta_y
             angle_radians = np.deg2rad(angle_deg)
                 
-            # print("angle degree:", angle_deg)
-
             # Create the rotation matrix
             R_z = np.array([[np.cos(angle_radians), -np.sin(angle_radians), 0],
                [np.sin(angle_radians), np.cos(angle_radians), 0],
@@ -454,14 +475,12 @@ class Camera():
             # Perform the rotation
             unit_vector = np.dot(R_z, unit_vector)
 
-
+            # Apply in the vertical direction as well - not in the x as the robot must be able to avoid the obstacles
             delta_z = float(self.ideal_pose[2]- eef_location[2])
 
             angle_deg_z = 40 * delta_z
             angle_radians_z = np.deg2rad(angle_deg_z)
                 
-            # print("angle degree:", angle_deg)
-
             # Create the rotation matrix
             R_y = np.array([
                 [np.cos(angle_radians_z), 0, np.sin(angle_radians_z)],
@@ -473,8 +492,8 @@ class Camera():
             
         goal_point = closest_point - (unit_vector*self.goal_distance) 
 
-        
-        # self.goal_line_ID = p.addUserDebugLine(goal_point, closest_point, lineColorRGB=[0, 1, 0])
+        # Show the current goal vector
+        self.goal_line_ID = p.addUserDebugLine(goal_point, closest_point, lineColorRGB=[0, 1, 0])
         
         if self.ideal_pose is None:
             self.ideal_pose = goal_point
@@ -483,12 +502,9 @@ class Camera():
         return goal_point
     
     def save_last_img(self):
-        # view_matrix = self.bullet_client.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=[1, 3, 1.6],
-        #                                                         distance=self.cam_extrinsic.cam_dist,
-        #                                                         yaw=0,
-        #                                                         pitch=0,
-        #                                                         roll=0,
-        #                                                         upAxisIndex=2)
+        """
+        Function used to save an image of the environment from a birds eye view once the simulation has completed.
+        """
         view_matrix = self.bullet_client.computeViewMatrix(
                             cameraEyePosition=[-1.0, 3, 3.5],
                             cameraTargetPosition=[0.9, 3, 1.6],
@@ -507,43 +523,14 @@ class Camera():
 
         pil_image = Image.fromarray(rgb_image)
 
-        # Create an OpenCV image from the RGB data
-        opencv_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2BGR)
-
-        # Save the image to a file
-        # cv2.imwrite("data/random_trials/output_image_cv.png", opencv_image)
-
         # Save the image to a file
         pil_image.save(f"data/random_trials/output_image_{self.filename_suffix}.png")
 
-    def update_error(self, eef_pos, obs_uids, current_y_distance):
-        "Potential helper function to find the error - not used currently"
-        if self.sim_running:
-            min_distance = float('inf')
-            closest_point = None
-            
-            for uid in obs_uids:
-                results = self.bullet_client.getClosestPoints(bodyA=self.robot.robot_uid, bodyB=uid, linkIndexA=6, distance=5.0)
-                print("RESULTS", results)
-                if len(results) > 0:
-                    point = results[0][6]
-                    dist = results[0][8]
-                    if dist<min_distance:
-                        min_distance = dist
-                        closest_point = point
-        
-            self.bullet_client.addUserDebugLine(closest_point, eef_pos, lineColorRGB=[0, 0, 1])
-            print("min distnace", min_distance)
-            error = abs(self.goal_distance - min_distance)
-            self.error_values.append(error)
-            self.y_distances.append(current_y_distance)
-
     def plot_error(self, step_comp_times, policy_calc_times, first_policy_eval_time):
+        """
+        Plots the percentage error over the trial and saves computation time data, graph building time data, error data, and distance from surface data.
+        """
         plt.figure()
-        # time_step_array = np.arange(0, len(self.error_values))
-        # monorail_velocity = 1.0
-        # goal_distance = self.go
-
         # Store error data
         distance_array = np.array(self.y_distances)
         error_values = np.array(self.error_values)

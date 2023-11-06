@@ -1,3 +1,32 @@
+# Online Surface Following Algorthm using Riemannian Motion Policies
+Code adaped from the RMP2 code to enable surface following in a dynamic environment. The Readme for the original code can be found at the bottom of this file.
+
+### Instalation 
+Download the rmp2 zip file or run:
+git clone https://github.com/ChelseaDavidson02/rmp2.git
+
+### System integration
+This code operates in Ubuntu and must therefore be run on an Ubuntu device or in WSL on Windows Devices.
+
+Ensure that a virtual environment manager is installed. The following code assumes anaconda3 is used.
+
+Setup a virtual environment by running:
+```
+conda env create -f environment.yml
+```
+
+To activate the environment and export the python path, run:
+```
+. startup.sh
+```
+
+### Surface following code
+To run the surface following algorithm in the simulated environment, run:
+```
+python examples/rmp2/surface_following.py 
+```
+
+
 # RMP2
 
 

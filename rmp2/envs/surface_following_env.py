@@ -1,5 +1,6 @@
 """
-Base gym environment for franka robot
+Base gym environment for franka robot for surface following task.
+Default config is not currently used in surface following task - env_mode is set to cylinder_combo in surface_following.py.
 """
 
 from rmp2.envs.robot_env import RobotEnv
@@ -18,10 +19,10 @@ DEFAULT_CONFIG = {
     "goal_torus_minor_radius": 0.3,
     "goal_torus_height": 0.5,
     # parameters for randomly generated obstacles
-    "obs_torus_angle_center": 0, #np.pi, # 0.
-    "obs_torus_angle_range": np.pi, #2*np.pi,# np.pi
-    "obs_torus_major_radius": 0.5, #1, # 0.5
-    "obs_torus_minor_radius": 0.3, #0.5, # 0.3
+    "obs_torus_angle_center": 0, 
+    "obs_torus_angle_range": np.pi, 
+    "obs_torus_major_radius": 0.5, 
+    "obs_torus_minor_radius": 0.3,
     "obs_torus_height": 0.5,
     # obstacle size
     "max_obstacle_radius": 0.1,
@@ -62,6 +63,7 @@ class FrankaEnvSF(RobotEnv):
             config=config)
 
     def _generate_random_goal(self):
+        """Generates a random goal for the algorithm"""
         # if goal is not given, sample a random goal with the specified parameters
         if self.goal is None:
             current_goal = sample_from_torus_3d(
@@ -83,7 +85,11 @@ class FrankaEnvSF(RobotEnv):
         return current_goal, goal_uid
 
     def _generate_random_obstacles(self):
-        # obstacle_colour = [0.8, 0.0, 0.0, 1]
+        """
+        Creates a set of obstacles to be used in the environment depending on the env_mode parameter set in surface_following.py
+        Function will not generate 'random' obstacles unless a random environment mode is selected. 
+        Function naming is to keep robot_env.py integratable with all examples.
+        """
         obstacle_colour = [0.5, 0.5, 0.5, 1]
         if self.env_mode == 'single_body':
             return self.generate_single_body_obst(obstacle_colour)
@@ -109,6 +115,7 @@ class FrankaEnvSF(RobotEnv):
     
     
     def generate_obs_random(self):
+        """Generates a random obstacles based on the config. parameters set in this function and surface_following.py"""
         current_obstacles = []
         obstacle_uids = []
 
@@ -146,6 +153,7 @@ class FrankaEnvSF(RobotEnv):
         return current_obstacles, obstacle_uids        
     
     def generate_single_eef_obst(self, obstacle_colour):
+        """Generates a single obstacle in the scene which is on path to collide with the robot's eef."""
         current_obstacles = []
         obstacle_uids = []
     
@@ -158,6 +166,7 @@ class FrankaEnvSF(RobotEnv):
         return current_obstacles, obstacle_uids
 
     def generate_single_body_obst(self, obstacle_colour):
+        """Generates a single obstacle in the scene which is on path to collide with the robot's body."""
         current_obstacles = []
         obstacle_uids = []
     
@@ -166,25 +175,20 @@ class FrankaEnvSF(RobotEnv):
         center = [0.5, -0.5, 0.7]
         obstacle_uids.append(add_obstacle_cuboid(self._p, center=center, size=[0.4, 0.2, 0.1], color=obstacle_colour))
         
-        # initial_pos = [0.0000, -pi/5,  0.0000, -5*pi/8,  0.0000,  pi,  pi/4]
-        # dist_x: 0.1
-        # dist_y: 0.1
-        # dist_z: 0
-        # pitch: 1.0471975512 
-        # yaw: -0.39269908169
-        
         return current_obstacles, obstacle_uids
     
     def generate_surface(self):
+        """Generates a single cuboid in the scene to imitate a wall."""
         current_obstacles = []
         obstacle_uids = []
     
-        # Adding big tunnel
+        # Adding big wall
         obstacle_uids.append(add_obstacle_cuboid(self._p, center=[1.6,0,0], size=[1, 20, 2]))
         
         return current_obstacles, obstacle_uids
     
     def generate_cylinder_with_spherical_obst(self, obstacle_colour):
+        """Generates a cylinder with a single spherical obstacle"""
         current_obstacles = []
         obstacle_uids = []
     
@@ -196,6 +200,7 @@ class FrankaEnvSF(RobotEnv):
         return current_obstacles, obstacle_uids
     
     def generate_cylinder_combination_obst(self, obstacle_colour):
+        """Generates a cylinder with a combonation of obstacles along its path. This environment is intended to model the LHC environment."""
         current_obstacles = []
         obstacle_uids = []
         
@@ -231,6 +236,7 @@ class FrankaEnvSF(RobotEnv):
         return current_obstacles, obstacle_uids
     
     def generate_overlapping_combination_obst(self, obstacle_colour):
+        """Generates a cylinder with a combonation of obstacles along its path that overlap with eachother"""
         current_obstacles = []
         obstacle_uids = []
         
@@ -261,6 +267,7 @@ class FrankaEnvSF(RobotEnv):
         return current_obstacles, obstacle_uids
     
     def generate_cluttered_combination_obst(self, obstacle_colour):
+        """Generates a cylinder with a many different obstacles along its path"""
         current_obstacles = []
         obstacle_uids = []
         
@@ -313,6 +320,8 @@ class FrankaEnvSF(RobotEnv):
         return current_obstacles, obstacle_uids
     
     def generate_cylinder_random_obst(self, obstacle_colour):
+        """Generates a cylinder with a combonation of randomly sized and placed obstacles along its path. 
+        This environment is intended to model a randomised version of the LHC environment."""
         current_obstacles = []
         obstacle_uids = []
         
